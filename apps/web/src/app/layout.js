@@ -1,5 +1,6 @@
 import NavBar from '../components/NavBar/NavBar';
 import BasicOutline from '../components/basicOutline/BasicOutline';
+import '@/styles/variables.css';
 
 export const metadata = {
   title: 'SmartSplit',
