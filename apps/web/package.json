@@ -9,13 +9,16 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "-": "^0.0.1",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.4",
     "@mui/material": "^7.3.4",
+    "g": "^2.0.1",
     "next": "16.0.1",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "supabase": "^2.54.11"
   },
   "devDependencies": {
     "eslint": "^9",
