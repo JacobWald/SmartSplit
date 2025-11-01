@@ -13,9 +13,11 @@ export default function RootLayout({ children }) {
       <body>
         <NavBar />
         {/* Use your outline as a wrapper around routed content */}
-        <BasicOutline>
-          {children}
-        </BasicOutline>
+        <main>
+          <BasicOutline>
+            {children}
+          </BasicOutline>
+        </main>
       </body>
     </html>
   );
