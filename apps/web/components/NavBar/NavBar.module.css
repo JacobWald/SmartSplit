@@ -3,8 +3,8 @@
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    color: var(--color-primary) !important;
-    background-color: var(--color-tertiary);
+    color: var(--color-tertiary) !important;
+    background-color: var(--color-primary);
     padding: 1rem;
     border: 1px solid black;
 }
@@ -30,10 +30,22 @@
     margin-left: auto;
 }
 
-.MuiButton-root {
-    color: var(--white) !important;
-    font-size: 35px !important;
-    margin-right: 1rem !important;
+.navButton {
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+  border-radius: 8px !important;
+  padding: 0.5rem 1rem !important;
+  text-transform: none !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid var(--color-primary) !important;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.navButton:hover {
+  background-color: var(--color-secondary) !important;
+  color: var(--color-primary) !important;
 }
 
 .navbar-mobile{

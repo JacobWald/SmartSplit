@@ -10,7 +10,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
+      <body style={{ backgroundColor: 'var(--color-bg)', fontFamily: 'var(--font)', margin: 0 }}>
         <NavBar />
         {/* Use your outline as a wrapper around routed content */}
         <main>

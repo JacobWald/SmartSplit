@@ -21,7 +21,12 @@ export default function NavBar() {
             <div className={styles['navbar-left']}>
                 <Link href="/">
                     <Button>
-                        <HomeIcon sx={{ fontSize: '45px' }} />
+                        <HomeIcon sx={{ fontSize: '45px', color: 'var(--color-bg)' }} />
+                    </Button>
+                </Link>
+                <Link href="/groups">
+                    <Button variant="contained" className={styles.navButton}>
+                        Groups
                     </Button>
                 </Link>
                 {/* Add more navigation links/buttons here as needed */}
@@ -42,6 +47,9 @@ export default function NavBar() {
                     <List>
                         <ListItemButton component={Link} href="/" onClick={handleMenuClose}>
                                 <ListItemText primary="Home" />
+                        </ListItemButton>
+                        <ListItemButton component={Link} href="/groups" onClick={handleMenuClose}>
+                                <ListItemText primary="Groups" />
                         </ListItemButton>
                         {/* Add more navigation items here as needed */}
                     </List>
