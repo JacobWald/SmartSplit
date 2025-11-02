@@ -1,7 +1,7 @@
 :root {
   --color-primary: #6D94C5;
   --color-secondary: #CBDCEB;
-  --color-tertiary: #E8DFCA;
-  --color-text: #F5EFE6;
+  --color-tertiary: #F5EFE6;
+  --color-bg: #E8DFCA;
   --font: 'Arial, sans-serif';
 }

@@ -1,0 +1,21 @@
+.root {
+  color: var(--color-primary);
+  font-family: var(--font);
+  background-color: var(--color-bg);
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+/* apply consistent spacing and typography inside this scope */
+.root h1,
+.root h2,
+.root h3,
+.root h4,
+.root h5,
+.root h6,
+.root p,
+.root span,
+.root a {
+  color: inherit;
+  font-family: inherit;
+}
