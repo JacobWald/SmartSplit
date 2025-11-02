@@ -6,7 +6,6 @@
     color: var(--color-tertiary) !important;
     background-color: var(--color-primary);
     padding: 1rem;
-    border: 1px solid black;
 }
 
 .navbar-left {
