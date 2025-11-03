@@ -29,6 +29,11 @@ export default function NavBar() {
                         Groups
                     </Button>
                 </Link>
+                <Link href="/profile">
+                    <Button variant="contained" className={styles.navButton}>
+                        Profile
+                    </Button>
+                </Link>
                 {/* Add more navigation links/buttons here as needed */}
             </div>
             <div className={styles['navbar-mobile']}>
@@ -50,6 +55,9 @@ export default function NavBar() {
                         </ListItemButton>
                         <ListItemButton component={Link} href="/groups" onClick={handleMenuClose}>
                                 <ListItemText primary="Groups" />
+                        </ListItemButton>
+                        <ListItemButton component={Link} href="/profile" onClick={handleMenuClose}>
+                                 <ListItemText primary="Profile" />
                         </ListItemButton>
                         {/* Add more navigation items here as needed */}
                     </List>

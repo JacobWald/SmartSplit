@@ -1,22 +1,43 @@
-//This is where you would create an API route for groups using supabaseServer for privileged actions
-//Example from ChatGPT below:
+import { NextResponse } from "next/server";
+import { supabaseServer } from "@/lib/supabaseServer";
 
+// GET /api/groups?owner_id=<uuid>
+export async function GET(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const owner_id = searchParams.get("owner_id"); // optional filter
 
-// import { supabaseServer } from '../../../lib/supabaseServer'
+    let query = supabaseServer.from("groups").select("*").order("created_at", { ascending: false });
+    if (owner_id) query = query.eq("owner_id", owner_id);
 
-// export async function POST(request) {
-//   try {
-//     const body = await request.json()
-//     const { name, owner_id, base_currency } = body
+    const { data, error } = await query;
+    if (error) throw error;
 
-//     const { data, error } = await supabaseServer
-//       .from('groups')
-//       .insert([{ name, owner_id, base_currency }])
-//       .select()
+    return NextResponse.json(data);
+  } catch (e) {
+    return NextResponse.json({ error: String(e.message || e) }, { status: 500 });
+  }
+}
 
-//     if (error) throw error
-//     return new Response(JSON.stringify(data[0]), { status: 201 })
-//   } catch (err) {
-//     return new Response(JSON.stringify({ error: err.message }), { status: 500 })
-//   }
-// }
+// POST /api/groups  { name, owner_id, base_currency? }
+export async function POST(request) {
+  try {
+    const body = await request.json();
+    const { name, owner_id, base_currency = "USD" } = body;
+
+    if (!name || !owner_id) {
+      return NextResponse.json({ error: "name and owner_id are required" }, { status: 400 });
+    }
+
+    const { data, error } = await supabaseServer
+      .from("groups")
+      .insert([{ name, owner_id, base_currency }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json(data, { status: 201 });
+  } catch (e) {
+    return NextResponse.json({ error: String(e.message || e) }, { status: 500 });
+  }
+}
