@@ -1,78 +1,49 @@
-.container {
-  max-width: 700px;
-  margin: 50px auto;
-  background-color: #f9fafb;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  padding: 30px;
-  font-family: 'Inter', system-ui, sans-serif;
+.expenseBox {
+  background: var(--surface);
+  border: 1px solid var(--primary);
+  border-radius: 14px;
+  padding: 20px;
+  margin: 24px auto;
+  width: min(720px, 92%);
+  box-shadow: 0 6px 16px rgba(0,0,0,.08);
 }
 
-.container h1 {
+.expenseTitle {
+  color: var(--primary);
+  font-size: 1.35rem;
+  font-weight: 700;
   text-align: center;
-  color: #333;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-bottom: 25px;
+.expenseForm {
+  display: grid;
+  gap: 12px;
 }
 
-.form input {
+.input, .select {
+  border: 1px solid var(--accent);
+  border-radius: 10px;
   padding: 10px 12px;
-  font-size: 16px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.form input:focus {
-  border-color: #3b82f6;
-  outline: none;
-  box-shadow: 0 0 4px rgba(59, 130, 246, 0.3);
-}
-
-.form button {
-  background-color: #3b82f6;
-  color: white;
-  font-weight: 600;
-  border: none;
-  border-radius: 6px;
-  padding: 10px 16px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.form button:hover {
-  background-color: #2563eb;
-}
-
-.expenseList {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
-}
-
-.expenseList li {
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  margin-bottom: 10px;
-  padding: 12px 15px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 15px;
-  color: #111827;
+  color: var(--text);
 }
 
-.expenseList li strong {
-  color: #2563eb;
+.buttonPrimary {
+  border: none;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .06s ease, background .2s ease;
 }
 
-.expenseList li:hover {
-  background-color: #f3f4f6;
+.buttonPrimary:hover { background: var(--accent); }
+.buttonPrimary:active { transform: translateY(1px); }
+
+.helper {
+  color: var(--muted);
+  font-size: .9rem;
 }

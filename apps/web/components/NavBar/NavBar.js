@@ -29,6 +29,8 @@ export default function NavBar() {
                         Groups
                     </Button>
                 </Link>
+		<Link href="/expenses" onClick={handleMenuClose}> Expenses
+		</Link>
                 {/* Add more navigation links/buttons here as needed */}
             </div>
             <div className={styles['navbar-mobile']}>
