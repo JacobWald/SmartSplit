@@ -1,0 +1,78 @@
+.container {
+  max-width: 700px;
+  margin: 50px auto;
+  background-color: #f9fafb;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  padding: 30px;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.container h1 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.form input {
+  padding: 10px 12px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.form input:focus {
+  border-color: #3b82f6;
+  outline: none;
+  box-shadow: 0 0 4px rgba(59, 130, 246, 0.3);
+}
+
+.form button {
+  background-color: #3b82f6;
+  color: white;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.form button:hover {
+  background-color: #2563eb;
+}
+
+.expenseList {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.expenseList li {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  padding: 12px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 15px;
+  color: #111827;
+}
+
+.expenseList li strong {
+  color: #2563eb;
+}
+
+.expenseList li:hover {
+  background-color: #f3f4f6;
+}
