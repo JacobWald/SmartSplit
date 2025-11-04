@@ -1,46 +1,41 @@
 "use client";
-
 import React, { useState, useEffect } from "react";
+import { supabase } from "../src/utils/supabaseClient";
 import styles from "../styles/ExpensesPage.module.css";
-import { createClient } from "@supabase/supabase-js";
-
-// TEMP: use public anon key from .env.local (already set)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
 
 export default function ExpensesPage() {
+  const [expenses, setExpenses] = useState([]);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [expenses, setExpenses] = useState([]);
-  const [loading, setLoading] = useState(false);
 
-  // TEMP: fetch basic list (no group filter yet)
   useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase
-        .from("expenses")
-        .select("id, description, amount, created_at")
-        .order("created_at", { ascending: false })
-        .limit(10);
-      if (!error && data) setExpenses(data);
-    })();
+    fetchExpenses();
   }, []);
 
-  const handleAddExpense = async () => {
-    if (!amount) return alert("Amount is required");
-    setLoading(true);
-    // TEMP INSERT: ONLY columns that exist & don’t require FKs
+  const fetchExpenses = async () => {
     const { data, error } = await supabase
       .from("expenses")
-      .insert([{ amount: Number(amount), description }])
-      .select();
-    setLoading(false);
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) console.error("Error fetching expenses:", error.message);
+    else setExpenses(data || []);
+  };
+
+  const handleAddExpense = async (e) => {
+    e.preventDefault();
+    const { data, error } = await supabase.from("expenses").insert([
+      {
+        description,
+        amount: parseFloat(amount),
+        payer_id: "dc099671-6ed0-49ab-a3b0-8518dfa77bc1",
+        group_id: "dc099671-6ed0-49ab-a3b0-8518dfa77bc1",
+      },
+    ]);
+
     if (error) {
       console.error("❌ Error adding expense:", error.message);
       alert("Error adding expense. Check console for details.");
-    } else if (data && data[0]) {
+    } else {
       setExpenses([data[0], ...expenses]);
       setDescription("");
       setAmount("");
@@ -48,47 +43,33 @@ export default function ExpensesPage() {
   };
 
   return (
-    <div className={styles.expenseBox}>
-      <h2 className={styles.expenseTitle}>Add Expense</h2>
-
-      <div className={styles.expenseForm}>
+    <div className={styles.container}>
+      <h1>💰 Group Expenses</h1>
+      <form onSubmit={handleAddExpense} className={styles.form}>
         <input
-          className={styles.input}
-          placeholder="Description"
+          type="text"
+          placeholder="Expense description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          required
         />
         <input
-          className={styles.input}
-          placeholder="Amount"
           type="number"
+          placeholder="Amount"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
+          required
         />
+        <button type="submit">Add Expense</button>
+      </form>
 
-        <button
-          className={styles.buttonPrimary}
-          onClick={handleAddExpense}
-          disabled={loading}
-        >
-          {loading ? "Adding..." : "Add Expense"}
-        </button>
-
-        <p className={styles.helper}>
-          Temporary flow: inserts amount + description only. Once groups/login
-          are finalized we’ll add <code>group_id</code> and <code>payer_id</code>.
-        </p>
-
-        {expenses.length > 0 && (
-          <ul>
-            {expenses.map((x) => (
-              <li key={x.id}>
-                {x.description || "Untitled"} — ${x.amount}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <ul className={styles.expenseList}>
+        {expenses.map((exp) => (
+          <li key={exp.id}>
+            <strong>{exp.description}</strong> — ${exp.amount}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

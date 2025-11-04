@@ -1,47 +1,55 @@
 .createButton {
-  background-color: var(--color-primary);
-  color: var(--color-tertiary);
-  text-transform: none;
-  font-weight: 600;
-  border-radius: 8px;
-  padding: 0.5rem 1rem; /* replaces px: 2 */
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-  cursor: pointer;
-  transition: background-color 0.2s ease-in-out;
+  background-color: var(--color-primary) !important;
+  color: var(--color-tertiary) !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 0.5rem 1rem !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s ease-in-out !important;
 }
 
 .createButton:hover {
-  background-color: var(--color-secondary);
-  color: var(--color-primary);
+  background-color: var(--color-secondary) !important ;
+  color: var(--color-primary) !important;
+}
+
+.groupCard {
+  background-color: var(--color-primary) !important;  
+  color: var(--color-tertiary) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25) !important;
+  padding: 0 !important;                
 }
 
 .dialogPaper {
-  background-color: var(--color-primary);  
-  color: var(--color-tertiary);
-  border-radius: 16px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-  padding: 0;                
-  width: 560px;            
-  max-width: 95vw;           
+  background-color: var(--color-primary) !important;  
+  color: var(--color-tertiary) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25) !important;
+  padding: 0 !important;                
+  width: 560px !important;            
+  max-width: 95vw !important;           
 }
 
 .inputs {
-  background-color: var(--color-bg);
-  color: var(--color-primary);
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
 }
 
 /* Example button style to match your theme */
 .dialogButton {
   background-color: var(--color-bg) !important; 
   color: var(--color-primary) !important;
-  text-transform: none;
-  font-weight: 600;
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
-  transition: background-color .2s ease-in-out;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 0.5rem 1rem !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15) !important;
+  transition: background-color .2s ease-in-out !important;
 }
 .dialogButton:hover  {
   background-color: var(--color-secondary) !important;
