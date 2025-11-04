@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import './LandingPage.module.css'
 
 export default function LandingPage() {
   return (
