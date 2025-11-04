@@ -1,4 +1,5 @@
 import NavBar from '../components/NavBar/NavBar';
+import BasicOutline from '../components/basicOutline/BasicOutline';
 import AuthSessionSync from '../components/AuthSessionSync'
 import '@/styles/variables.css';
 import '@/styles/globals.css';
@@ -15,7 +16,9 @@ export default function RootLayout({ children }) {
         <AuthSessionSync />
         <NavBar />
         <main>
+          <BasicOutline>
             {children}
+          </BasicOutline>
         </main>
       </body>
     </html>
