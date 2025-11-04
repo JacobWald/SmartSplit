@@ -17,15 +17,21 @@
 }
 
 .button {
-  display: inline-block;
+  background-color: var(--color-primary) !important;
+  color: var(--color-tertiary) !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
   margin-top: 30px;
   padding: 12px 24px;
-  background-color: #2e86de;
-  color: white;
-  border-radius: 8px;
-  text-decoration: none;
-  font-weight: bold;
-  transition: background-color 0.3s;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s ease-in-out !important;
+}
+
+.button:hover {
+  background-color: var(--color-secondary) !important ;
+  color: var(--color-primary) !important;
 }
 
 .button:hover {

@@ -57,6 +57,18 @@ export default function NavBar() {
           </ListItemButton>
         </List>
       </Drawer>
+
+       {/* RIGHT: Log In */}
+       <div className={styles['navbar-right']}>
+        <Link href="/login">
+          <Button
+            variant="outlined"
+            className={styles.navButton}
+          >
+            Log In
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 }

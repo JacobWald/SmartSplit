@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { supabase } from "../src/utils/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 import styles from "./ExpensesPage.module.css";
 
 export default function ExpensesPage() {

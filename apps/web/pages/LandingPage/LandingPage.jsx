@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import './LandingPage.module.css'
+import styles from './LandingPage.module.css'
 
 export default function LandingPage() {
   return (
@@ -11,7 +11,7 @@ export default function LandingPage() {
         Easily add bills, assign who paid, and settle up instantly.
       </p>
       <a href="/expenses">
-        <button style={{ marginTop: "20px", padding: "10px 20px" }}>
+        <button className={styles.button}>
           Go to Expenses
         </button>
       </a>
