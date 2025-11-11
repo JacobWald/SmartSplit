@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, MenuItem, Box, Chip, Autocomplete, Stack, Typography,
-  Grid, Card, CardContent, Select, InputLabel, FormControl, MenuItem as MenuItem2
+  Grid, Card, CardActionArea, CardContent, Select, InputLabel, FormControl, Link, MenuItem as MenuItem2
 } from '@mui/material'
 import styles from './GroupsPage.module.css'
 
@@ -96,6 +96,13 @@ export default function GroupsPage() {
         }
     }
 
+    const slugify = (s) =>
+        s.toLowerCase()
+            .trim()
+            .replace(/[\s\_]+/g, '-')    
+            .replace(/[^a-z0-9\-]/g, '')    
+            .replace(/\-+/g, '-')   
+
     return (
         <>
             {currentUser === null ? (
@@ -147,44 +154,46 @@ export default function GroupsPage() {
                         {groups.map(group => (
                             <Grid item xs={12} sm={6} md={4} key={group.id}>
                             <Card variant="outlined" className={styles.groupCard}>
+                                <CardActionArea component={Link} href={`/groups/${encodeURIComponent(slugify(group.name))}`}>
                                 <CardContent>
-                                <Typography variant="h6" sx={{ mb: 1 }}>{group.name}</Typography>
-                                <FormControl fullWidth size="small" className={styles.inputs}>
-                                    <InputLabel>Members</InputLabel>
-                                    <Select
-                                    label="Members"
-                                    displayEmpty
-                                    value=""
-                                    renderValue={() => 'Members'}
-                                    MenuProps={{ PaperProps: { style: { maxHeight: 360 } } }}
-                                    >
-                                    {group.members.map(m => (
-                                        <MenuItem2 key={m.user_id} value={m.user_id} disabled>
-                                        <Stack
-                                            direction="row"
-                                            alignItems="center"
-                                            justifyContent="space-between"
-                                            sx={{ width: '100%' }}
+                                    <Typography variant="h6" sx={{ mb: 1 }}>{group.name}</Typography>
+                                    <FormControl fullWidth size="small" className={styles.inputs}>
+                                        <InputLabel>Members</InputLabel>
+                                        <Select
+                                        label="Members"
+                                        displayEmpty
+                                        value=""
+                                        renderValue={() => 'Members'}
+                                        MenuProps={{ PaperProps: { style: { maxHeight: 360 } } }}
                                         >
-                                            <Typography>{m.full_name}</Typography>
-                                            <Chip
-                                            size="small"
-                                            label={m.status}
-                                            color={
-                                                m.status === 'ACCEPTED'
-                                                ? 'success'
-                                                : m.status === 'INVITED'
-                                                ? 'warning'
-                                                : 'default'
-                                            }
-                                            variant="outlined"
-                                            />
-                                        </Stack>
-                                        </MenuItem2>
-                                    ))}
-                                    </Select>
-                                </FormControl>
+                                        {group.members.map(m => (
+                                            <MenuItem2 key={m.user_id} value={m.user_id} disabled>
+                                            <Stack
+                                                direction="row"
+                                                alignItems="center"
+                                                justifyContent="space-between"
+                                                sx={{ width: '100%' }}
+                                            >
+                                                <Typography>{m.full_name}</Typography>
+                                                <Chip
+                                                size="small"
+                                                label={m.status}
+                                                color={
+                                                    m.status === 'ACCEPTED'
+                                                    ? 'success'
+                                                    : m.status === 'INVITED'
+                                                    ? 'warning'
+                                                    : 'default'
+                                                }
+                                                variant="outlined"
+                                                />
+                                            </Stack>
+                                            </MenuItem2>
+                                        ))}
+                                        </Select>
+                                    </FormControl>
                                 </CardContent>
+                                </CardActionArea>
                             </Card>
                             </Grid>
                         ))}
