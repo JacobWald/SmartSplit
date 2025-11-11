@@ -37,16 +37,31 @@ export async function POST(request) {
   }
 }
 
+function slugify(name = '') {
+  return name
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')        // spaces -> dashes
+    .replace(/[^a-z0-9-]/g, '')  // drop punctuation
+    .replace(/-+/g, '-');        // collapse repeats
+}
+
 export async function GET(request) {
   try {
     const { supabase, response } = createSSRClientFromRequest(request)
 
+    // who is the caller?
     const { data: userData, error: userErr } = await supabase.auth.getUser()
     if (userErr || !userData?.user) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401, headers: response.headers })
     }
     const uid = userData.user.id
 
+    // optional ?slug=... coming from GroupDetailPage
+    const slugParam = request.nextUrl.searchParams.get('slug')
+
+    // which groups does this user belong to?
     const { data: gmMine, error: gmMineErr } = await supabaseServer
       .from('group_members')
       .select('group_id')
@@ -55,21 +70,25 @@ export async function GET(request) {
 
     const groupIds = [...new Set((gmMine ?? []).map(r => r.group_id))]
     if (groupIds.length === 0) {
-      return NextResponse.json([], { status: 200, headers: response.headers })
+      // no groups at all
+      return NextResponse.json(slugParam ? null : [], { status: 200, headers: response.headers })
     }
 
+    // fetch groups
     const { data: groups, error: gErr } = await supabaseServer
       .from('groups')
       .select('id, name, base_currency')
       .in('id', groupIds)
     if (gErr) throw gErr
 
+    // fetch members for those groups
     const { data: members, error: mErr } = await supabaseServer
       .from('group_members')
       .select('group_id, user_id, role, status')
       .in('group_id', groupIds)
     if (mErr) throw mErr
 
+    // resolve member names
     const userIds = [...new Set(members.map(m => m.user_id))]
     const { data: profiles, error: pErr } = await supabaseServer
       .from('profiles')
@@ -79,6 +98,7 @@ export async function GET(request) {
 
     const nameById = new Map(profiles.map(p => [p.id, p.full_name]))
     const membersByGroup = Object.fromEntries(groupIds.map(id => [id, []]))
+
     for (const m of members) {
       membersByGroup[m.group_id].push({
         user_id: m.user_id,
@@ -95,6 +115,14 @@ export async function GET(request) {
       members: membersByGroup[g.id] || [],
     }))
 
+    // when ?slug=... is provided, return just that group (or null/404)
+    if (slugParam) {
+      const wanted = result.find(g => slugify(g.name) === slugParam)
+      // return null w/ 200 so your client can show "not found" nicely
+      return NextResponse.json(wanted ?? null, { status: 200, headers: response.headers })
+    }
+
+    // otherwise return all groups
     return NextResponse.json(result, { status: 200, headers: response.headers })
   } catch (err) {
     return NextResponse.json({ error: err.message ?? 'Server error' }, { status: 500 })
