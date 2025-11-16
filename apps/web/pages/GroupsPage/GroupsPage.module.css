@@ -1,38 +1,97 @@
+.page {
+  padding: clamp(12px, 2vw, 20px);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 12px;
+}
+
+.title {
+  color: var(--color-primary);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* ==== GRID LAYOUT ==== */
+.groupGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+  justify-items: center;
+  align-items: stretch;
+}
+
+/* ==== GROUP CARDS ==== */
+.groupCard {
+  background-color: var(--color-primary) !important;
+  color: var(--color-tertiary) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+  width: 100%;
+  max-width: 260px;
+  height: 180px; /* uniform height */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.groupCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25) !important;
+}
+
+.cardContent {
+  padding: 1rem !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+}
+
+.cardTitle {
+  font-weight: 600;
+  margin-bottom: 0.5rem !important;
+}
+
+/* Members dropdown */
+.memberName {
+  color: var(--color-primary);
+  font-size: 0.9rem;
+}
+
+/* Empty message */
+.empty {
+  margin-top: 2rem;
+  text-align: center;
+  color: var(--color-primary);
+  background-color: var(--color-bg);
+  border: 1px dashed var(--color-primary);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+
+/* Create button */
 .createButton {
   background-color: var(--color-primary) !important;
   color: var(--color-tertiary) !important;
   text-transform: none !important;
   font-weight: 600 !important;
   border-radius: 8px !important;
-  padding: 0.5rem 1rem !important;
+  padding: 6px 14px !important;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
-  cursor: pointer !important;
   transition: background-color 0.2s ease-in-out !important;
 }
-
 .createButton:hover {
-  background-color: var(--color-secondary) !important ;
+  background-color: var(--color-secondary) !important;
   color: var(--color-primary) !important;
 }
 
-.groupCard {
-  background-color: var(--color-primary) !important;  
-  color: var(--color-tertiary) !important;
-  border-radius: 16px !important;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25) !important;
-  padding: 0 !important;                
-}
-
-.dialogPaper {
-  background-color: var(--color-primary) !important;  
-  color: var(--color-tertiary) !important;
-  border-radius: 16px !important;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25) !important;
-  padding: 0 !important;                
-  width: 560px !important;            
-  max-width: 95vw !important;           
-}
-
+/* Inputs in dialog */
 .inputs {
   background-color: var(--color-bg) !important;
   color: var(--color-primary) !important;
@@ -40,17 +99,49 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
 }
 
-/* Example button style to match your theme */
+/* Dialog look */
+.dialogPaper {
+  background-color: var(--color-primary) !important;
+  color: var(--color-tertiary) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25) !important;
+  max-width: 560px !important;
+  width: 92vw !important;
+}
+
 .dialogButton {
-  background-color: var(--color-bg) !important; 
+  background-color: var(--color-bg) !important;
   color: var(--color-primary) !important;
   text-transform: none !important;
   font-weight: 600 !important;
   border-radius: 8px !important;
-  padding: 0.5rem 1rem !important;
+  padding: 6px 14px !important;
   box-shadow: 0 1px 4px rgba(0,0,0,0.15) !important;
   transition: background-color .2s ease-in-out !important;
 }
-.dialogButton:hover  {
+.dialogButton:hover {
   background-color: var(--color-secondary) !important;
-} 
+}
+
+/* Empty-state */
+.empty {
+  margin-top: 28px;
+  text-align: center;
+  color: var(--color-primary);
+  background-color: var(--color-bg);
+  border: 1px dashed var(--color-primary);
+  border-radius: 12px;
+  padding: 22px;
+}
+
+.selectOutline :global(.MuiOutlinedInput-notchedOutline) {
+  border-color: var(--color-tertiary) !important;
+}
+
+.selectOutline:hover :global(.MuiOutlinedInput-notchedOutline) {
+  border-color: var(--color-secondary) !important;
+}
+
+.selectText {
+  color: var(--color-tertiary) !important;
+}

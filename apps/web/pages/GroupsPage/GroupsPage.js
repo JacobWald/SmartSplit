@@ -105,99 +105,125 @@ export default function GroupsPage() {
 
     return (
         <>
-            {currentUser === null ? (
-                <Box
-                    sx={{
-                    height: '70vh',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    textAlign: 'center',
-                    }}
-                >
-                    <Typography variant="h5" sx={{ color: 'var(--color-primary)' }}>
+        {currentUser === null ? (
+            <Box
+            sx={{
+                minHeight: '60vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                px: 2,
+            }}
+            >
+                <Typography variant="h6" sx={{ color: 'var(--color-primary)' }}>
                     You must sign in to view the Groups page.
-                    </Typography>
-                </Box>
-                ) : (
-                <Box sx={{ p: 2 }}>
-                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                        <Typography variant="h4">Groups</Typography>
-                        <Button className={styles.createButton} onClick={() => setOpen(true)}>
-                        Create Group
-                        </Button>
-                    </Stack>
+                </Typography>
+            </Box>
+        ) : (
+            <Box className={styles.page}>
+                <Stack
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    className={styles.header}
+                >
+                    <Typography variant="h4" className={styles.title}>Groups</Typography>
+                    <Button className={styles.createButton} onClick={() => setOpen(true)}>
+                    Create Group
+                    </Button>
+                </Stack>
 
-                    {status && <Typography sx={{ mt: 1 }}>{status}</Typography>}
+                {status && <Typography sx={{ mt: 1 }}>{status}</Typography>}
 
-                    {groups.length === 0 ? (
-                        <Box
-                        sx={{
-                            mt: 6,
-                            textAlign: 'center',
-                            color: 'var(--color-primary)',
-                            backgroundColor: 'var(--color-bg)',
-                            border: '1px dashed var(--color-primary)',
-                            borderRadius: '12px',
-                            p: 4,
-                        }}
-                        >
+                {groups.length === 0 ? (
+                    <Box className={styles.empty}>
                         <Typography variant="h6" sx={{ mb: 1 }}>
-                            You are currently not in any groups.
+                        You are currently not in any groups.
                         </Typography>
-                        <Typography variant="body2" sx={{ color: 'var(--color-primary)' }}>
-                            Click “Create Group” above to start a new one!
+                        <Typography variant="body2">
+                        Click “Create Group” above to start a new one!
                         </Typography>
-                        </Box>
+                    </Box>
                     ) : (
-                        <Grid container spacing={2} sx={{ mt: 2 }}>
+                    <div className={styles.groupGrid}>
                         {groups.map(group => (
-                            <Grid item xs={12} sm={6} md={4} key={group.id}>
-                            <Card variant="outlined" className={styles.groupCard}>
-                                <CardActionArea component={Link} href={`/groups/${encodeURIComponent(slugify(group.name))}`}>
-                                <CardContent>
-                                    <Typography variant="h6" sx={{ mb: 1 }}>{group.name}</Typography>
-                                    <FormControl fullWidth size="small" className={styles.inputs}>
-                                        <InputLabel>Members</InputLabel>
-                                        <Select
-                                        label="Members"
-                                        displayEmpty
-                                        value=""
-                                        renderValue={() => 'Members'}
-                                        MenuProps={{ PaperProps: { style: { maxHeight: 360 } } }}
-                                        >
-                                        {group.members.map(m => (
-                                            <MenuItem2 key={m.user_id} value={m.user_id} disabled>
-                                            <Stack
-                                                direction="row"
-                                                alignItems="center"
-                                                justifyContent="space-between"
-                                                sx={{ width: '100%' }}
-                                            >
-                                                <Typography>{m.full_name}</Typography>
-                                                <Chip
-                                                size="small"
-                                                label={m.status}
-                                                color={
-                                                    m.status === 'ACCEPTED'
-                                                    ? 'success'
-                                                    : m.status === 'INVITED'
-                                                    ? 'warning'
-                                                    : 'default'
-                                                }
-                                                variant="outlined"
-                                                />
-                                            </Stack>
-                                            </MenuItem2>
-                                        ))}
-                                        </Select>
-                                    </FormControl>
-                                </CardContent>
-                                </CardActionArea>
-                            </Card>
-                            </Grid>
+                        <Card key={group.id} className={styles.groupCard}>
+                            <CardActionArea component={Link} href={`/groups/${encodeURIComponent(slugify(group.name))}`}>
+                            <CardContent className={styles.cardContent}>
+                                <Typography variant="h6" className={styles.cardTitle}>
+                                {group.name}
+                                </Typography>
+
+                                <FormControl fullWidth size="small" className={styles.selectOutline}>
+                                <InputLabel className={styles.selectText}>Members</InputLabel>
+                                <Select
+                                label="Members"
+                                displayEmpty
+                                value=""
+                                renderValue={() => "Members"}
+                                sx={{
+                                    color: "var(--color-tertiary)", // text always white-ish
+                                    "& .MuiSelect-icon": {
+                                    color: "var(--color-tertiary)",
+                                    },
+                                    "& .MuiOutlinedInput-notchedOutline": {
+                                    borderColor: "var(--color-tertiary)",
+                                    },
+                                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                                    borderColor: "var(--color-secondary)",
+                                    },
+                                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                                    borderColor: "var(--color-secondary)",
+                                    },
+                                }}
+                                MenuProps={{
+                                    PaperProps: {
+                                    sx: {
+                                        backgroundColor: "var(--color-bg)",
+                                        color: "var(--color-primary)",
+                                        borderRadius: "12px",
+                                        boxShadow: "0px 6px 20px rgba(0,0,0,0.25)",
+                                    },
+                                    },
+                                }}
+                                >
+                                {group.members.map((m) => (
+                                    <MenuItem2
+                                    key={m.user_id}
+                                    value={m.user_id}
+                                    disabled
+                                    sx={{
+                                        opacity: 1,
+                                        color: "var(--color-primary)",
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        "&.Mui-disabled": { opacity: 1, color: "var(--color-primary)" },
+                                    }}
+                                    >
+                                    <Typography>{m.full_name}</Typography>
+                                    <Chip
+                                        size="small"
+                                        label={m.status}
+                                        color={
+                                        m.status === "ACCEPTED"
+                                            ? "success"
+                                            : m.status === "INVITED"
+                                            ? "warning"
+                                            : "default"
+                                        }
+                                        variant="outlined"
+                                    />
+                                    </MenuItem2>
+                                ))}
+                                </Select>
+                                </FormControl>
+                            </CardContent>
+                            </CardActionArea>
+                        </Card>
                         ))}
-                        </Grid>
+                    </div>
                     )}
 
                     {/* CREATE DIALOG */}
