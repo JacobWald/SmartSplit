@@ -4,12 +4,48 @@ import styles from './NavBar.module.css';
 import { Button, Drawer, List, ListItemButton, ListItemText } from '@mui/material';
 import Link from 'next/link';
 import HomeIcon from '@mui/icons-material/Home';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function NavBar() {
   const [isMenuOpen, setMenuOpen] = useState(false);
+  const [user, setUser] = useState(null);
 
   const handleMenuClose = () => setMenuOpen(false);
+
+  useEffect(() => {
+    // Check the current auth session on mount
+    const getUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (!error && data?.user) {
+        setUser(data.user);
+      } else {
+        setUser(null);
+      }
+    };
+
+    getUser();
+
+    // Subscribe to auth changes so the nav stays in sync
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    // Redirect after logout
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+  };
 
   return (
     <div className={styles.navbar}>
@@ -40,7 +76,7 @@ export default function NavBar() {
         </Link>
       </div>
 
-      {/* RIGHT SIDE / Drawer or other items can remain */}
+      {/* RIGHT SIDE / Drawer */}
       <Drawer anchor="right" open={isMenuOpen} onClose={handleMenuClose}>
         <List>
           <ListItemButton component={Link} href="/">
@@ -58,16 +94,26 @@ export default function NavBar() {
         </List>
       </Drawer>
 
-       {/* RIGHT: Log In */}
-       <div className={styles['navbar-right']}>
-        <Link href="/login">
+      {/* RIGHT: Auth-aware button */}
+      <div className={styles['navbar-right']}>
+        {user ? (
           <Button
             variant="outlined"
             className={styles.navButton}
+            onClick={handleLogout}
           >
-            Log In
+            Log Out
           </Button>
-        </Link>
+        ) : (
+          <Link href="/login">
+            <Button
+              variant="outlined"
+              className={styles.navButton}
+            >
+              Log In
+            </Button>
+          </Link>
+        )}
       </div>
     </div>
   );

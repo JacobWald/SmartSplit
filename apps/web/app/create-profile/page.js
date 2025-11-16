@@ -5,14 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import {
-  Container,
-  Card,
-  CardContent,
+  Box,
   Typography,
   TextField,
   Button,
   Alert,
-  Box,
   CircularProgress,
   Grid,
 } from '@mui/material';
@@ -21,6 +18,19 @@ function normalizeUsername(raw) {
   return (raw || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
 }
 
+// Same input style as My Profile page
+const inputSx = {
+  '& .MuiOutlinedInput-root': {
+    backgroundColor: 'var(--color-bg)',
+    color: 'var(--color-primary)',
+    borderRadius: '8px',
+    boxShadow: '0 1px 4px rgba(0, 0, 0, 0.15)',
+  },
+  '& .MuiOutlinedInput-input': {
+    color: 'var(--color-primary)',
+  },
+};
+
 export default function CreateProfilePage() {
   const router = useRouter();
 
@@ -28,7 +38,7 @@ export default function CreateProfilePage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Profile fields
+  // Profile fields (for metadata)
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState(''); // unique handle
   const [phone, setPhone] = useState('');
@@ -54,186 +64,208 @@ export default function CreateProfilePage() {
       return;
     }
     if (normalized.length < 3) {
-      setErrorMsg('Username must be at least 3 characters (letters, numbers, underscore).');
+      setErrorMsg(
+        'Username must be at least 3 characters (letters, numbers, underscore).'
+      );
       setSubmitting(false);
       return;
     }
 
     try {
-      // 1) Create auth user (may require email confirmation depending on your Supabase Auth settings)
+      // 1) Create auth user + store username in user_metadata
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { full_name: fullName } }, // user_metadata
+        options: {
+          data: {
+            full_name: fullName,
+            phone,
+            avatar_url: avatarUrl || null,
+            username: normalized,
+          },
+        },
       });
+
       if (signUpError) throw signUpError;
 
-      // 2) If your project requires email confirmation, there will be NO session yet.
-      //    With RLS, anonymous inserts are blocked. So don't upsert now; wait until user logs in.
-      if (!signUpData.session) {
+      const hasSession = !!signUpData.session;
+
+      // If email confirmation is required, Supabase won't give us a session here
+      if (!hasSession) {
         setInfoMsg(
-          'Check your email to confirm your account. After confirming, please log in — we’ll finish creating your profile automatically.'
+          'Account created! Check your email to confirm. After confirming, log in – your profile (including username) will be set up automatically.'
         );
         return;
       }
 
-      // 3) Session exists (email confirmation OFF) → safe to upsert now
-      const userId = signUpData.user?.id;
-      if (!userId) {
-        setErrorMsg('Could not read new user id. Please try logging in.');
-        return;
-      }
-
-      // Upsert WITHOUT the "email" column to avoid schema mismatch errors
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: userId,
-        full_name: fullName,
-        username: normalized,
-        phone: phone || null,
-        avatar_url: avatarUrl || null,
-        updated_at: new Date().toISOString(),
-      });
-
-      // Handle unique-username errors nicely (Postgres code 23505)
-      if (profileError) {
-        if (profileError.code === '23505') {
-          setErrorMsg('That username is taken. Please choose another.');
-        } else {
-          setErrorMsg(profileError.message || 'Unable to create your profile.');
-        }
-        return;
-      }
-
+      // If we *do* have a session, we can send them straight to /profile.
+      // The Profile page will create/update the row in public.profiles using RLS.
       setInfoMsg('Account created! Redirecting to your profile…');
       setTimeout(() => router.push('/profile'), 800);
     } catch (err) {
-      setErrorMsg(err?.message || 'Unable to create your profile. Please try again.');
+      console.error('Create profile error:', err);
+      setErrorMsg(
+        err?.message || 'Unable to create your profile. Please try again.'
+      );
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <Container maxWidth="sm" sx={{ py: { xs: 4, md: 6 } }}>
-      <Card elevation={3} sx={{ borderRadius: 3 }}>
-        <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-          <Typography
-            variant="h4"
-            component="h1"
-            gutterBottom
-            sx={{ fontWeight: 700, textAlign: 'center', mb: 3 }}
+    <Box
+      sx={{
+        backgroundColor: 'var(--color-primary)',
+        color: 'var(--color-tertiary)',
+        borderRadius: '16px',
+        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.25)',
+        maxWidth: 560,
+        width: '92vw',
+        mx: 'auto',
+        mt: 6,
+        p: 3,
+      }}
+    >
+      <Typography
+        variant="h4"
+        component="h1"
+        gutterBottom
+        sx={{ fontWeight: 700, textAlign: 'center', mb: 2 }}
+      >
+        Create Profile
+      </Typography>
+
+      {errorMsg && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {errorMsg}
+        </Alert>
+      )}
+      {infoMsg && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {infoMsg}
+        </Alert>
+      )}
+
+      <Box component="form" onSubmit={handleCreate} noValidate>
+        <Grid container spacing={2}>
+          <Grid item xs={12}>
+            <TextField
+              label="Full Name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              fullWidth
+              required
+              autoComplete="name"
+              sx={inputSx}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <TextField
+              label="Username"
+              placeholder="e.g., rakan_a"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              fullWidth
+              required
+              helperText="Letters, numbers, underscore; 3+ chars."
+              inputProps={{ pattern: '[A-Za-z0-9_]{3,}' }}
+              sx={inputSx}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <TextField
+              label="Phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              fullWidth
+              autoComplete="tel"
+              sx={inputSx}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <TextField
+              label="Avatar URL (optional)"
+              placeholder="https://…"
+              value={avatarUrl}
+              onChange={(e) => setAvatarUrl(e.target.value)}
+              fullWidth
+              autoComplete="off"
+              sx={inputSx}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <TextField
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              fullWidth
+              required
+              autoComplete="email"
+              sx={inputSx}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <TextField
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              fullWidth
+              required
+              autoComplete="new-password"
+              sx={inputSx}
+            />
+          </Grid>
+        </Grid>
+
+        <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+          <Button
+            type="submit"
+            variant="contained"
+            size="large"
+            disabled={submitting}
+            sx={{
+              backgroundColor: 'var(--color-bg)',
+              color: 'var(--color-primary)',
+              boxShadow: '0 1px 4px rgba(0, 0, 0, 0.15)',
+              '&:hover': {
+                backgroundColor: 'var(--color-bg)',
+                opacity: 0.9,
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
+              },
+            }}
           >
-            Create Profile
-          </Typography>
+            {submitting ? (
+              <>
+                <CircularProgress size={22} sx={{ mr: 1 }} />
+                Creating…
+              </>
+            ) : (
+              'Create Profile'
+            )}
+          </Button>
+        </Box>
 
-          {errorMsg && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {errorMsg}
-            </Alert>
-          )}
-          {infoMsg && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              {infoMsg}
-            </Alert>
-          )}
-
-          <Box component="form" onSubmit={handleCreate} noValidate>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <TextField
-                  label="Full Name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  fullWidth
-                  required
-                  autoComplete="name"
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <TextField
-                  label="Username"
-                  placeholder="e.g., rakan_a"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  fullWidth
-                  required
-                  helperText="Letters, numbers, underscore; 3+ chars."
-                  inputProps={{ pattern: '[A-Za-z0-9_]{3,}' }}
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <TextField
-                  label="Phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  fullWidth
-                  autoComplete="tel"
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <TextField
-                  label="Avatar URL (optional)"
-                  placeholder="https://…"
-                  value={avatarUrl}
-                  onChange={(e) => setAvatarUrl(e.target.value)}
-                  fullWidth
-                  autoComplete="off"
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <TextField
-                  label="Email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  fullWidth
-                  required
-                  autoComplete="email"
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <TextField
-                  label="Password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  fullWidth
-                  required
-                  autoComplete="new-password"
-                />
-              </Grid>
-            </Grid>
-
-            <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-              <Button type="submit" variant="contained" size="large" disabled={submitting}>
-                {submitting ? (
-                  <>
-                    <CircularProgress size={22} sx={{ mr: 1 }} />
-                    Creating…
-                  </>
-                ) : (
-                  'Create Profile'
-                )}
-              </Button>
-            </Box>
-
-            <Typography variant="body2" sx={{ mt: 3, textAlign: 'center' }}>
-              Already have an account?{' '}
-              <Link
-                href="/login"
-                style={{ textDecoration: 'none', color: '#1976d2', fontWeight: 600 }}
-              >
-                Log In
-              </Link>
-            </Typography>
-          </Box>
-        </CardContent>
-      </Card>
-    </Container>
+        <Typography variant="body2" sx={{ mt: 3, textAlign: 'center' }}>
+          Already have an account?{' '}
+          <Link
+            href="/login"
+            style={{
+              textDecoration: 'underline',
+              color: 'var(--color-tertiary)',
+              fontWeight: 600,
+            }}
+          >
+            Log In
+          </Link>
+        </Typography>
+      </Box>
+    </Box>
   );
 }
