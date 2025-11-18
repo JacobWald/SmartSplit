@@ -92,11 +92,11 @@ export async function GET(request) {
     const userIds = [...new Set(members.map(m => m.user_id))]
     const { data: profiles, error: pErr } = await supabaseServer
       .from('profiles')
-      .select('id, full_name')
+      .select('id, username')
       .in('id', userIds)
     if (pErr) throw pErr
 
-    const nameById = new Map(profiles.map(p => [p.id, p.full_name]))
+    const nameById = new Map(profiles.map(p => [p.id, p.username]))
     const membersByGroup = Object.fromEntries(groupIds.map(id => [id, []]))
 
     for (const m of members) {
