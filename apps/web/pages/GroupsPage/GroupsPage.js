@@ -169,8 +169,7 @@ export default function GroupsPage() {
                             ) : (
                             <div className={styles.groupGrid}>
                                 {groups.map(group => (
-                                    <Card key={group.id} className={styles.groupCard}>
-                                        <CardActionArea component={Link} href={`/groups/${encodeURIComponent(slugify(group.name))}`}>
+                                    <CardActionArea key={group.id} component={Link} href={`/groups/${encodeURIComponent(slugify(group.name))}`} className={styles.groupCard}>
                                         <CardContent className={styles.cardContent}>
                                             <Typography variant="h6" className={styles.cardTitle}>
                                             {group.name}
@@ -241,8 +240,7 @@ export default function GroupsPage() {
                                             </Select>
                                             </FormControl>
                                         </CardContent>
-                                        </CardActionArea>
-                                    </Card>
+                                    </CardActionArea>
                                 ))}
                             </div>
                         )}
