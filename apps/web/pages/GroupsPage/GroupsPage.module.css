@@ -145,3 +145,7 @@
 .selectText {
   color: var(--color-tertiary) !important;
 }
+
+.dialogueText {
+  color: var(--color-tertiary)
+}
