@@ -38,7 +38,7 @@ export default function CreateProfilePage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Profile fields (for metadata)
+  // Profile fields (for metadata + profiles table)
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState(''); // unique handle
   const [phone, setPhone] = useState('');
@@ -72,34 +72,63 @@ export default function CreateProfilePage() {
     }
 
     try {
-      // 1) Create auth user + store username in user_metadata
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            phone,
-            avatar_url: avatarUrl || null,
-            username: normalized,
+      // 1) Create auth user + store profile fields in user_metadata
+      const { data: signUpData, error: signUpError } =
+        await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+              phone,
+              avatar_url: avatarUrl || null,
+              username: normalized,
+            },
           },
-        },
-      });
+        });
 
       if (signUpError) throw signUpError;
 
       const hasSession = !!signUpData.session;
+      const newUser = signUpData.user;
 
+      // 2) If we have a session, fully populate the profiles row *right now*
+      //    (RLS usually requires auth.uid() = id, so we only do this when logged in)
+      if (hasSession && newUser?.id) {
+        try {
+          const { error: profileErr } = await supabase
+            .from('profiles')
+            .upsert({
+              id: newUser.id,
+              full_name: fullName || null,
+              phone: phone || null,
+              email: email || null,
+              username: normalized,
+              avatar_url: avatarUrl || null,
+              updated_at: new Date().toISOString(),
+            });
+
+          if (profileErr) {
+            console.error('Profile upsert on sign-up failed:', profileErr);
+          }
+        } catch (profileUpsertErr) {
+          console.error(
+            'Unexpected error upserting profile on sign-up:',
+            profileUpsertErr
+          );
+        }
+      }
+
+      // 3) Handle the no-session vs session cases
       // If email confirmation is required, Supabase won't give us a session here
       if (!hasSession) {
         setInfoMsg(
-          'Account created! Check your email to confirm. After confirming, log in – your profile (including username) will be set up automatically.'
+          'Account created! Check your email to confirm. After confirming, log in – your profile will be ready.'
         );
         return;
       }
 
-      // If we *do* have a session, we can send them straight to /profile.
-      // The Profile page will create/update the row in public.profiles using RLS.
+      // If we *do* have a session, send them straight to /profile
       setInfoMsg('Account created! Redirecting to your profile…');
       setTimeout(() => router.push('/profile'), 800);
     } catch (err) {

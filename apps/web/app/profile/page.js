@@ -11,6 +11,7 @@ import {
   Button,
   Alert,
   CircularProgress,
+  Autocomplete,
 } from "@mui/material";
 
 // Input styling (matches rest of app)
@@ -62,10 +63,15 @@ export default function ProfilePage() {
   const [incomingRequests, setIncomingRequests] = useState([]);
 
   // UI state for friend actions
-  const [friendUsernameInput, setFriendUsernameInput] = useState("");
   const [addingFriend, setAddingFriend] = useState(false);
   const [removingFriendId, setRemovingFriendId] = useState(null);
   const [respondingRequestId, setRespondingRequestId] = useState(null);
+
+  // All profiles for dynamic friend search
+  const [allProfiles, setAllProfiles] = useState([]);
+
+  // Search input for dynamic friend search
+  const [friendSearchInput, setFriendSearchInput] = useState("");
 
   const initials = useMemo(() => {
     const n = (fullName || email || "").trim();
@@ -75,6 +81,33 @@ export default function ProfilePage() {
     const second = parts[1]?.[0] || "";
     return (first + second).toUpperCase() || first.toUpperCase() || "?";
   }, [fullName, email]);
+
+  // Profiles available to add as friends (exclude self + existing friends)
+  const availableProfiles = useMemo(() => {
+    if (!userId || !allProfiles.length) return [];
+    const friendIds = new Set(
+      (friends || [])
+        .map((f) => f.friend?.id)
+        .filter(Boolean)
+    );
+    return allProfiles.filter(
+      (p) => p.id !== userId && !friendIds.has(p.id)
+    );
+  }, [allProfiles, friends, userId]);
+
+  // Only show options after typing >= 3 chars, and filter by name/username
+  const searchableProfiles = useMemo(() => {
+    const term = friendSearchInput.trim().toLowerCase();
+    if (!term || term.length < 3) return [];
+    return availableProfiles.filter((p) => {
+      const name = (p.full_name || "").toLowerCase();
+      const handle = (p.username || "").toLowerCase();
+      return name.includes(term) || handle.includes(term);
+    });
+  }, [availableProfiles, friendSearchInput]);
+
+  // Whether the dropdown should be open at all
+  const showAutocompleteDropdown = friendSearchInput.trim().length >= 3;
 
   useEffect(() => {
     (async () => {
@@ -104,7 +137,7 @@ export default function ProfilePage() {
         // 2) Load profile row
         const { data: profile, error: profErr } = await supabase
           .from("profiles")
-          .select("full_name, display_name, phone, avatar_url, email, username")
+          .select("full_name, phone, avatar_url, email, username")
           .eq("id", user.id)
           .single();
 
@@ -114,13 +147,9 @@ export default function ProfilePage() {
         }
 
         if (profile) {
-          // Profile row exists: prefer full_name, then display_name, then metadata
+          // Profile row exists: prefer full_name, then metadata
           const nameFromProfile =
-            profile.full_name ||
-            profile.display_name ||
-            user.user_metadata?.full_name ||
-            user.user_metadata?.display_name ||
-            "";
+            profile.full_name || user.user_metadata?.full_name || "";
 
           const phoneFromProfile =
             profile.phone || user.user_metadata?.phone || "";
@@ -159,10 +188,7 @@ export default function ProfilePage() {
           }
         } else {
           // No profile row yet: build from auth metadata and auto-create row
-          const nameFromMeta =
-            user.user_metadata?.full_name ||
-            user.user_metadata?.display_name ||
-            "";
+          const nameFromMeta = user.user_metadata?.full_name || "";
           const phoneFromMeta = user.user_metadata?.phone || "";
           const usernameFromMeta2 = user.user_metadata?.username || "";
 
@@ -178,7 +204,6 @@ export default function ProfilePage() {
           const { error: insertErr } = await supabase.from("profiles").upsert({
             id: user.id,
             full_name: nameFromMeta || null,
-            display_name: nameFromMeta || null,
             phone: phoneFromMeta || null,
             email: user.email || null,
             username: usernameFromMeta2 || null,
@@ -236,6 +261,23 @@ export default function ProfilePage() {
           throw reqErr;
         }
         setIncomingRequests(reqRows || []);
+
+        // 5) Load all profiles for dynamic friend search
+        try {
+          const res = await fetch("/api/profiles");
+          if (res.ok) {
+            const list = await res.json();
+            if (Array.isArray(list)) {
+              setAllProfiles(list);
+            } else {
+              setAllProfiles([]);
+            }
+          } else {
+            console.error("Failed to load profiles list:", await res.text());
+          }
+        } catch (profilesErr) {
+          console.error("Error fetching profiles list:", profilesErr);
+        }
       } catch (e) {
         console.error("Error loading profile:", e);
         setErrorMsg(e?.message || "Failed to load profile.");
@@ -256,7 +298,6 @@ export default function ProfilePage() {
       const updates = {
         id: userId,
         full_name: fullName || null,
-        display_name: fullName || null,
         phone: phone || null,
         email: email || null,
         username: username || null,
@@ -277,21 +318,25 @@ export default function ProfilePage() {
     }
   }
 
-  // SEND friend request by username
-  async function handleAddFriend() {
-    if (!userId) return;
+  // SEND friend request by selecting a user from dynamic list
+  async function handleAddFriend(profileOption) {
+    if (!userId || !profileOption) return;
 
-    const raw = friendUsernameInput.trim();
-    if (!raw) {
-      setErrorMsg("Please enter a username.");
+    const friendId = profileOption.id;
+    const friendName = profileOption.full_name || profileOption.username || "";
+
+    // Prevent adding yourself
+    if (friendId === userId) {
+      setErrorMsg("You cannot add yourself as a friend.");
       return;
     }
 
-    const normalized = raw.toLowerCase();
-
-    // Prevent adding yourself
-    if (username && username.toLowerCase() === normalized) {
-      setErrorMsg("You cannot add yourself as a friend.");
+    // Prevent adding someone who is already a friend
+    const alreadyFriend = friends.some(
+      (f) => f.friend && f.friend.id === friendId
+    );
+    if (alreadyFriend) {
+      setErrorMsg("You are already friends with this user.");
       return;
     }
 
@@ -300,25 +345,12 @@ export default function ProfilePage() {
       setErrorMsg("");
       setInfoMsg("");
 
-      // 1) Look up the friend in profiles by username (case-insensitive)
-      const { data: friendProfile, error: lookupError } = await supabase
-        .from("profiles")
-        .select("id, full_name, username, phone")
-        .ilike("username", normalized)
-        .single();
-
-      if (lookupError || !friendProfile) {
-        console.error("Friend lookup error:", lookupError);
-        setErrorMsg(`No user found with username "${raw}".`);
-        return;
-      }
-
-      // 2) Insert into user_friend_requests as PENDING
+      // Insert into user_friend_requests as PENDING
       const { error: reqErr } = await supabase
         .from("user_friend_requests")
         .insert({
           from_user_id: userId,
-          to_user_id: friendProfile.id,
+          to_user_id: friendId,
         });
 
       if (reqErr) {
@@ -334,8 +366,14 @@ export default function ProfilePage() {
         return;
       }
 
-      setFriendUsernameInput("");
-      setInfoMsg("Friend request sent!");
+      // Remove this profile from the available list so they can't be re-selected
+      setAllProfiles((prev) => prev.filter((p) => p.id !== friendId));
+
+      setInfoMsg(
+        friendName
+          ? `Friend request sent to ${friendName}.`
+          : "Friend request sent!"
+      );
     } catch (e) {
       console.error("Error sending friend request:", e);
       setErrorMsg(e?.message || "Unable to send friend request.");
@@ -609,34 +647,52 @@ export default function ProfilePage() {
             My Friends
           </Typography>
 
-          {/* Add friend by username */}
-          <Box display="flex" gap={1} mb={2} flexWrap="wrap">
-            <TextField
-              label="Add friend by username"
-              placeholder="username"
-              value={friendUsernameInput}
-              onChange={(e) => setFriendUsernameInput(e.target.value)}
-              size="small"
-              sx={{ ...inputSx, flex: 1, minWidth: 0 }}
-            />
-            <Button
-              variant="contained"
-              onClick={handleAddFriend}
-              disabled={addingFriend || !friendUsernameInput.trim()}
+          {/* Add friend by searching users (dynamic list) */}
+          <Box mb={2}>
+            <Typography
+              variant="subtitle1"
               sx={{
-                minWidth: 120,
-                backgroundColor: "var(--color-bg)",
+                mb: 1,
                 color: "var(--color-primary)",
-                boxShadow: "0 1px 4px rgba(0, 0, 0, 0.15)",
-                "&:hover": {
-                  backgroundColor: "var(--color-bg)",
-                  opacity: 0.9,
-                  boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
-                },
+                fontWeight: 600,
               }}
             >
-              {addingFriend ? "Adding…" : "Add Friend"}
-            </Button>
+              Add a friend
+            </Typography>
+            <Autocomplete
+              options={searchableProfiles}
+              open={showAutocompleteDropdown}
+              getOptionLabel={(option) => {
+                if (!option) return "";
+                const name = option.full_name || "";
+                const handle = option.username || "";
+                if (name && handle) return `${name} (${handle})`;
+                return name || handle || "";
+              }}
+              inputValue={friendSearchInput}
+              onInputChange={(_, newInput) => {
+                setFriendSearchInput(newInput);
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Search by name or username"
+                  placeholder="Type at least 3 characters..."
+                  size="small"
+                  sx={inputSx}
+                />
+              )}
+              onChange={(_, newValue) => {
+                if (newValue) {
+                  handleAddFriend(newValue);
+                  // Clear the input after selecting a friend
+                  setFriendSearchInput("");
+                }
+              }}
+              disabled={addingFriend}
+              noOptionsText={"No users found"}
+              forcePopupIcon={false}
+            />
           </Box>
 
           {/* Friend Requests (incoming) */}
