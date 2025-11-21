@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import {
   Box,
   Typography,
@@ -11,52 +11,21 @@ import {
   Divider,
   Stack,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-} from "@mui/material";
-import { supabase } from "@/lib/supabaseClient";
-import styles from "./GroupDetailPage.module.css";
+} from '@mui/material';
+import AddExpenseDialog from '@/components/AddExpenseDialog';
+import styles from './GroupDetailPage.module.css';
 
 export default function GroupDetailPage() {
   const { slug } = useParams();
 
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
-  // for popup + creating an expense
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState("");
-  const [profileId, setProfileId] = useState(null);
-  const [creating, setCreating] = useState(false);
+  const [expenseOpen, setExpenseOpen] = useState(false);
+  const [savingExpense, setSavingExpense] = useState(false);
 
-  // -------------------------
-  // Fetch current user profile id
-  // -------------------------
-  useEffect(() => {
-    async function loadProfile() {
-      const { data: userData, error: userErr } = await supabase.auth.getUser();
-      if (userErr || !userData?.user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", userData.user.id)
-        .single();
-
-      if (profile) setProfileId(profile.id);
-    }
-
-    loadProfile();
-  }, []);
-
-  // -------------------------
-  // Fetch Group Details
-  // -------------------------
+  // Fetch group details plus current user
   useEffect(() => {
     if (!slug) return;
 
@@ -64,13 +33,19 @@ export default function GroupDetailPage() {
       try {
         const res = await fetch(`/api/groups?slug=${encodeURIComponent(slug)}`);
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to fetch group');
 
-        if (!res.ok) throw new Error(data.error || "Failed to fetch group");
+        const groupObj = Array.isArray(data) ? data[0] : data;
 
-        // handle array or single object
-        const g = Array.isArray(data) ? data[0] : data;
-        setGroup(g);
+        const meRes = await fetch('/api/auth/me');
+        const me = await meRes.json();
+        if (me?.id) {
+          groupObj.currentUserId = me.id;
+        }
+
+        setGroup(groupObj);
       } catch (err) {
+        console.error(err);
         setError(err.message);
       } finally {
         setLoading(false);
@@ -78,17 +53,14 @@ export default function GroupDetailPage() {
     })();
   }, [slug]);
 
-  // -------------------------
-  // Loading & Error UI
-  // -------------------------
   if (loading) {
     return (
       <Box
         sx={{
-          height: "70vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
+          height: '70vh',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
         }}
       >
         <CircularProgress />
@@ -98,77 +70,53 @@ export default function GroupDetailPage() {
 
   if (error || !group) {
     return (
-      <Box sx={{ p: 4, textAlign: "center" }}>
+      <Box sx={{ p: 4, textAlign: 'center' }}>
         <Typography variant="h5" color="error">
-          {error || "Group not found."}
+          {error || 'Group not found.'}
         </Typography>
       </Box>
     );
   }
 
-  // -------------------------
-  // Add Expense (popup)
-  // -------------------------
-  const openDialog = () => {
-    setDialogOpen(true);
-  };
-
-  const closeDialog = () => {
-    if (creating) return;
-    setDialogOpen(false);
-    setTitle("");
-    setAmount("");
-  };
-
-  const handleCreateExpense = async (e) => {
-    e.preventDefault();
-
-    if (!group?.id) {
-      alert("Missing group id.");
-      return;
-    }
-    if (!profileId) {
-      alert("Profile not loaded yet, please try again in a moment.");
+  const handleCreateExpense = async ({ title, amount, assigned }) => {
+    if (!group?.id || !group.currentUserId) {
+      console.error('Missing group id or current user id');
       return;
     }
 
     try {
-      setCreating(true);
+      setSavingExpense(true);
 
-      const { data, error } = await supabase
-        .from("expenses")
-        .insert([
-          {
-            title,
-            amount: parseFloat(amount),
-            group_id: group.id,
-            payer_id: profileId,
-            currency: "USD",
-            occurred_at: new Date(),
-            qty: 1,
-            unit_price: parseFloat(amount),
-          },
-        ])
-        .select("*");
+      const res = await fetch('/api/expenses/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          amount,
+          group_id: group.id,
+          payer_id: group.currentUserId,
+          assigned,
+        }),
+      });
 
-      if (error) {
-        console.error("Error creating expense:", error.message);
-        alert(error.message);
+      const data = await res.json();
+      if (!res.ok) {
+        console.error('Error creating expense:', data.error);
+        alert(data.error || 'Failed to create expense');
         return;
       }
 
-      // later Jacob can use this expense data when he builds the group expenses view
-      console.log("Created expense:", data);
-
-      closeDialog();
+      setExpenseOpen(false);
+      // Jacob will handle displaying expenses for the group, so we do not need
+      // to reload anything here yet.
+    } catch (err) {
+      console.error('Error creating expense:', err);
+      alert('Error creating expense. Check console.');
     } finally {
-      setCreating(false);
+      setSavingExpense(false);
     }
   };
 
-  // -------------------------
-  // MAIN UI
-  // -------------------------
   return (
     <Box sx={{ p: 4 }}>
       <Stack
@@ -179,8 +127,10 @@ export default function GroupDetailPage() {
       >
         <Typography variant="h4">{group.name}</Typography>
 
-        {/* Add Expense opens dialog instead of navigating away */}
-        <Button className={styles.createButton} onClick={openDialog}>
+        <Button
+          className={styles.createButton}
+          onClick={() => setExpenseOpen(true)}
+        >
           Add Expense
         </Button>
       </Stack>
@@ -189,12 +139,11 @@ export default function GroupDetailPage() {
         Base Currency: {group.base_currency}
       </Typography>
 
-      {/* Members Section */}
       <Typography variant="h6" sx={{ mb: 1 }}>
         Members
       </Typography>
 
-      <List sx={{ border: "1px solid #ccc", borderRadius: 2 }}>
+      <List sx={{ border: '1px solid #ccc', borderRadius: 2 }}>
         {group.members.map((m) => (
           <div key={m.user_id}>
             <ListItem>
@@ -205,46 +154,21 @@ export default function GroupDetailPage() {
         ))}
       </List>
 
-      {/* Expenses Section placeholder for Jacob */}
-      <Typography variant="h6" sx={{ mb: 1, mt: 4 }}>
+      <Typography variant="h6" sx={{ mt: 4, mb: 1 }}>
         Expenses
       </Typography>
+      <Typography variant="body2">
+        Expense display for this group will be handled by Jacob’s component.
+      </Typography>
 
-      {/* --- Add Expense Dialog --- */}
-      <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
-        <DialogTitle>Add Expense for {group.name}</DialogTitle>
-        <form onSubmit={handleCreateExpense}>
-          <DialogContent sx={{ pt: 2 }}>
-            <TextField
-              label="Title"
-              fullWidth
-              margin="normal"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-            />
-            <TextField
-              label="Amount"
-              type="number"
-              fullWidth
-              margin="normal"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              required
-              inputProps={{ step: "0.01", min: "0" }}
-            />
-            {/* later we can extend this dialog to add per-member splits */}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={closeDialog} disabled={creating}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={creating || !title || !amount}>
-              {creating ? "Saving…" : "Save Expense"}
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
+      <AddExpenseDialog
+        open={expenseOpen}
+        onClose={() => setExpenseOpen(false)}
+        members={group.members}
+        onSubmit={handleCreateExpense}
+        loading={savingExpense}
+        groupName={group.name}
+      />
     </Box>
   );
 }

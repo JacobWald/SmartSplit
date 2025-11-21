@@ -1,44 +1,95 @@
-import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { NextResponse } from 'next/server';
+import { createSSRClientFromRequest } from '../../../../lib/supabaseSSR.js';
+import { supabaseServer } from '../../../../lib/supabaseServer.js';
 
-export async function POST(req) {
+export async function POST(request) {
   try {
-    const body = await req.json();
-    const { title, amount, group_id, payer_id, assigned } = body;
+    const { supabase, response } = createSSRClientFromRequest(request);
 
-    const { data: expense, error: expErr } = await supabaseServer
-      .from("expenses")
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !userData?.user) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401, headers: response.headers }
+      );
+    }
+
+    const { title, amount, group_id, payer_id, assigned } =
+      await request.json();
+
+    if (!title || !amount || !group_id || !payer_id || !Array.isArray(assigned)) {
+      return NextResponse.json(
+        { error: 'Missing required fields for expense creation' },
+        { status: 400, headers: response.headers }
+      );
+    }
+
+    const totalAssigned = assigned.reduce(
+      (sum, a) => sum + (Number(a.amount) || 0),
+      0
+    );
+
+    // soft validation: amounts should roughly match
+    if (Math.abs(totalAssigned - Number(amount)) > 0.05) {
+      return NextResponse.json(
+        {
+          error:
+            'Assigned amounts do not match total. Please recheck your split.',
+        },
+        { status: 400, headers: response.headers }
+      );
+    }
+
+    const now = new Date().toISOString();
+
+    const { data: expenseRows, error: expErr } = await supabaseServer
+      .from('expenses')
       .insert([
         {
           title,
           amount,
           group_id,
           payer_id,
-          currency: "USD",
-          occurred_at: new Date(),
+          currency: 'USD',
+          occurred_at: now,
+          qty: 1,
           unit_price: amount,
         },
       ])
-      .select("*")
-      .single();
+      .select()
+      .limit(1);
 
-    if (expErr) throw expErr;
+    if (expErr) {
+      console.error(expErr);
+      throw expErr;
+    }
 
-    // build assignment rows
-    const assignedRows = assigned.map((m) => ({
+    const expense = expenseRows[0];
+
+    const assignedRows = assigned.map((a) => ({
       expense_id: expense.id,
-      user_id: m.user_id,
-      amount: m.amount,
+      user_id: a.user_id,
+      amount: a.amount,
     }));
 
-    const { error: asgErr } = await supabaseServer
-      .from("assigned_expenses")
+    const { error: assignErr } = await supabaseServer
+      .from('assigned_expenses')
       .insert(assignedRows);
 
-    if (asgErr) throw asgErr;
+    if (assignErr) {
+      console.error(assignErr);
+      throw assignErr;
+    }
 
-    return NextResponse.json(expense, { status: 201 });
+    return NextResponse.json(
+      { expense, assigned: assignedRows },
+      { status: 201, headers: response.headers }
+    );
   } catch (err) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('Error in /api/expenses/create:', err);
+    return NextResponse.json(
+      { error: err.message ?? 'Server error' },
+      { status: 500 }
+    );
   }
 }
