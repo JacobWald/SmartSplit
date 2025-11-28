@@ -97,6 +97,17 @@
   color: var(--color-primary) !important;
 }
 
+.memberDeleteButton {
+  background-color: #d32f2f !important;
+  color: #ffffff !important;
+  padding: 4px 12px !important;
+  border-radius: 8px !important;
+}
+
+.memberDeleteButton:hover {
+  background-color: #b71c1c !important;
+}
+
 /* ===== EXPENSES ===== */
 
 .expenseCard {
@@ -209,7 +220,7 @@
   color: var(--color-primary) !important;
   text-transform: none !important;
   font-weight: 600 !important;
-  border-radius: 999px !important;
+  border-radius: 8px !important;
   padding: 4px 12px !important;
   min-width: auto !important;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18) !important;
@@ -224,6 +235,20 @@
   color: var(--color-primary);
   justify-content: center;
 }
+
+.deleteButton {
+  margin-top: 6px !important;
+  background-color: #d32f2f !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  padding: 4px 12px !important;
+  min-width: auto !important;
+}
+
+.deleteButton:hover {
+  background-color: #b71c1c !important;
+}
+
 
 /* Split breakdown */
 
@@ -309,7 +334,7 @@
 }
 
 .confirmDialogButtonPrimary:hover {
-  background-color: var(--color-tertiary) !important;
+  background-color: var(--color-secondary) !important;
   color: var(--color-primary) !important;
 }
 
@@ -323,6 +348,6 @@
 }
 
 .confirmDialogButtonSecondary:hover {
-  background-color: var(--color-tertiary) !important;
+  background-color: var(--color-secondary) !important;
   color: var(--color-primary) !important;
 }

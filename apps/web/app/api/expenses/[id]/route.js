@@ -126,3 +126,78 @@ export async function PUT(request, context) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+// Delete an existing expense
+export async function DELETE(request, context) {
+  try {
+    const { id } = await context.params;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Missing expense id in URL' },
+        { status: 400 }
+      );
+    }
+
+    const { supabase, response } = createSSRClientFromRequest(request);
+
+    // Auth
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !userData?.user) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401, headers: response.headers }
+      );
+    }
+    const currentUserId = userData.user.id;
+
+    // Load expense to get group_id
+    const { data: expense, error: expErr } = await supabaseServer
+      .from('expenses')
+      .select('id, group_id')
+      .eq('id', id)
+      .single();
+
+    if (expErr || !expense) {
+      return NextResponse.json(
+        { error: 'Expense not found' },
+        { status: 404, headers: response.headers }
+      );
+    }
+
+    // Check caller is ADMIN in this group
+    const { data: gm, error: gmErr } = await supabaseServer
+      .from('group_members')
+      .select('role')
+      .eq('group_id', expense.group_id)
+      .eq('user_id', currentUserId)
+      .single();
+
+    if (gmErr || !gm || gm.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Only group admins can delete expenses' },
+        { status: 403, headers: response.headers }
+      );
+    }
+
+    // Delete expense (assigned_expenses will cascade-delete)
+    const { error: delErr } = await supabaseServer
+      .from('expenses')
+      .delete()
+      .eq('id', id);
+
+    if (delErr) {
+      console.error('Error deleting expense:', delErr);
+      throw delErr;
+    }
+
+    return NextResponse.json(
+      { success: true },
+      { status: 200, headers: response.headers }
+    );
+  } catch (err) {
+    console.error('DELETE /api/expenses/[id] error:', err);
+    const message = err instanceof Error ? err.message : 'Server error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}

@@ -43,6 +43,16 @@ export default function GroupDetailPage() {
 
   const [togglingAssignmentId, setTogglingAssignmentId] = useState(null);
 
+  // Delete expense dialog
+  const [deleteExpenseDialogOpen, setDeleteExpenseDialogOpen] = useState(false);
+  const [expenseToDelete, setExpenseToDelete] = useState(null);
+  const [deletingExpense, setDeletingExpense] = useState(false);
+
+  // Delete member dialog
+  const [deleteMemberDialogOpen, setDeleteMemberDialogOpen] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState(null);
+  const [deletingMember, setDeletingMember] = useState(false);
+
   const parseJSON = async (res) => {
     if (!res.ok) return null;
     const text = await res.text();
@@ -317,6 +327,97 @@ export default function GroupDetailPage() {
     }
   };
 
+    const openDeleteExpenseDialog = (expense) => {
+    setExpenseToDelete(expense);
+    setDeleteExpenseDialogOpen(true);
+  };
+
+  const closeDeleteExpenseDialog = () => {
+    setDeleteExpenseDialogOpen(false);
+    setExpenseToDelete(null);
+  };
+
+  const confirmDeleteExpense = async () => {
+    if (!expenseToDelete?.id) {
+      closeDeleteExpenseDialog();
+      return;
+    }
+
+    try {
+      setDeletingExpense(true);
+
+      const res = await fetch(`/api/expenses/${expenseToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        console.error('Error deleting expense:', data.error);
+        alert(data.error || 'Failed to delete expense');
+        return;
+      }
+
+      // Reload expenses after delete
+      const eRes = await fetch(
+        `/api/expenses?groupId=${encodeURIComponent(group.id)}`
+      );
+      const e = await parseJSON(eRes);
+      setExpenses(Array.isArray(e) ? e : []);
+    } catch (err) {
+      console.error('Error deleting expense:', err);
+      alert('Error deleting expense. Check console.');
+    } finally {
+      setDeletingExpense(false);
+      closeDeleteExpenseDialog();
+    }
+  };
+
+    const openDeleteMemberDialog = (member) => {
+    setMemberToDelete(member);
+    setDeleteMemberDialogOpen(true);
+  };
+
+  const closeDeleteMemberDialog = () => {
+    setDeleteMemberDialogOpen(false);
+    setMemberToDelete(null);
+  };
+
+  const confirmDeleteMember = async () => {
+    if (!memberToDelete?.user_id || !group?.id) {
+      closeDeleteMemberDialog();
+      return;
+    }
+
+    try {
+      setDeletingMember(true);
+
+      const res = await fetch('/api/group-members', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          group_id: group.id,
+          user_id: memberToDelete.user_id,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        console.error('Error removing member:', data.error);
+        alert(data.error || 'Failed to remove member');
+        return;
+      }
+
+      // Reload group to refresh members list
+      await reloadGroup();
+    } catch (err) {
+      console.error('Error removing member:', err);
+      alert('Error removing member. Check console.');
+    } finally {
+      setDeletingMember(false);
+      closeDeleteMemberDialog();
+    }
+  };
+
   // Text for the role-change dialog
   const roleDialogTitle =
     roleDialogTargetRole === 'MODERATOR'
@@ -387,25 +488,39 @@ export default function GroupDetailPage() {
                   </Typography>
                 </Box>
 
-                {showPromote && (
-                  <Button
-                    size="small"
-                    onClick={() => openRoleDialog(m, 'MODERATOR')}
-                    className={styles.memberActionButton}
-                  >
-                    Promote to moderator
-                  </Button>
-                )}
+                <Stack direction="row" spacing={1}>
+                  {showPromote && (
+                    <Button
+                      size="small"
+                      onClick={() => openRoleDialog(m, 'MODERATOR')}
+                      className={styles.memberActionButton}
+                    >
+                      Promote to moderator
+                    </Button>
+                  )}
 
-                {showDemote && (
-                  <Button
-                    size="small"
-                    onClick={() => openRoleDialog(m, 'MEMBER')}
-                    className={styles.memberActionButton}
-                  >
-                    Demote to member
-                  </Button>
-                )}
+                  {showDemote && (
+                    <Button
+                      size="small"
+                      onClick={() => openRoleDialog(m, 'MEMBER')}
+                      className={styles.memberActionButton}
+                    >
+                      Demote to member
+                    </Button>
+                  )}
+
+                  {/* Admin-only remove (same condition as canModifyRole) */}
+                  {canModifyRole && (
+                    <Button
+                      size="small"
+                      onClick={() => openDeleteMemberDialog(m)}
+                      className={styles.memberDeleteButton}
+                      color="error"
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </Stack>
               </ListItem>
               {idx < group.members.length - 1 && (
                 <Divider className={styles.memberDivider} />
@@ -506,15 +621,29 @@ export default function GroupDetailPage() {
                     <Typography className={styles.expenseAmount}>
                       {Number(expense.amount).toFixed(2)} {group.base_currency}
                     </Typography>
-                    {canManageExpenses && (
-                      <Button
-                        size="small"
-                        onClick={() => openEditExpense(expense)}
-                        className={styles.editButton}
-                      >
-                        Edit
-                      </Button>
-                    )}
+
+                    <Stack direction="row" spacing={1}>
+                      {canManageExpenses && (
+                        <Button
+                          size="small"
+                          onClick={() => openEditExpense(expense)}
+                          className={styles.editButton}
+                        >
+                          Edit
+                        </Button>
+                      )}
+
+                      {isAdmin && (
+                        <Button
+                          size="small"
+                          onClick={() => openDeleteExpenseDialog(expense)}
+                          className={styles.deleteButton}
+                          color="error"
+                        >
+                          Delete
+                        </Button>
+                      )}
+                    </Stack>
                   </Box>
                 </Stack>
 
@@ -612,6 +741,95 @@ export default function GroupDetailPage() {
           </Button>
         </DialogActions>
       </Dialog>
+      
+      {/* Delete expense confirmation dialog */}
+      <Dialog
+        open={deleteExpenseDialogOpen}
+        onClose={closeDeleteExpenseDialog}
+        fullWidth
+        maxWidth="xs"
+        slotProps={{ paper: { className: styles.confirmDialogPaper } }}
+      >
+        <DialogTitle className={styles.confirmDialogTitle}>
+          Delete expense
+        </DialogTitle>
+        <DialogContent className={styles.confirmDialogContent}>
+          <Typography>
+            {expenseToDelete
+              ? `Are you sure you want to delete "${expenseToDelete.title}"? This action cannot be undone.`
+              : ''}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={closeDeleteExpenseDialog}
+            className={styles.confirmDialogButtonSecondary}
+            disabled={deletingExpense}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmDeleteExpense}
+            className={styles.confirmDialogButtonPrimary}
+            color="error"
+            disabled={deletingExpense}
+          >
+            {deletingExpense ? 'Deleting…' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete member confirmation dialog */}
+      <Dialog
+        open={deleteMemberDialogOpen}
+        onClose={closeDeleteMemberDialog}
+        fullWidth
+        maxWidth="xs"
+        slotProps={{ paper: { className: styles.confirmDialogPaper } }}
+      >
+        <DialogTitle className={styles.confirmDialogTitle}>
+          Remove member
+        </DialogTitle>
+        <DialogContent className={styles.confirmDialogContent}>
+          <Typography>
+            {memberToDelete
+              ? `Remove ${memberToDelete.full_name} from this group? They must not be part of any outstanding expenses.`
+              : ''}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={closeDeleteMemberDialog}
+            className={styles.confirmDialogButtonSecondary}
+            disabled={deletingMember}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmDeleteMember}
+            className={styles.confirmDialogButtonPrimary}
+            color="error"
+            disabled={deletingMember}
+          >
+            {deletingMember ? 'Removing…' : 'Remove'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reused dialog for both create + edit */}
+      <AddExpenseDialog
+        open={expenseOpen}
+        onClose={() => {
+          setExpenseOpen(false);
+          setEditingExpense(null);
+        }}
+        members={group.members}
+        onSubmit={handleExpenseSubmit}
+        loading={savingExpense}
+        groupName={group.name}
+        mode={editingExpense ? 'edit' : 'create'}
+        expense={editingExpense}
+      />
 
       {/* Reused dialog for both create + edit */}
       <AddExpenseDialog
