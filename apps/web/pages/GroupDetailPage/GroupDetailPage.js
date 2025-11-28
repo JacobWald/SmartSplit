@@ -28,6 +28,7 @@ export default function GroupDetailPage() {
 
   const [group, setGroup] = useState(null);
   const [expenses, setExpenses] = useState([]);
+  const [expenseFilter, setExpenseFilter] = useState('unfulfilled'); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -62,6 +63,16 @@ export default function GroupDetailPage() {
     return assignmentUserId === group.currentUserId;
   };
 
+  const filteredExpenses = useMemo(() => {
+    if (!Array.isArray(expenses)) return [];
+
+    if (expenseFilter === 'fulfilled') {
+      return expenses.filter((exp) => exp.fulfilled === true);
+    }
+
+    // default: show unfulfilled (or missing) ones
+    return expenses.filter((exp) => exp.fulfilled !== true);
+  }, [expenses, expenseFilter]);
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -386,13 +397,42 @@ export default function GroupDetailPage() {
         Expenses
       </Typography>
 
-      {expenses.length === 0 ? (
+      {/* Filter toggle */}
+      <Box className={styles.expenseFilterBar}>
+        <button
+          type="button"
+          className={
+            expenseFilter === 'unfulfilled'
+              ? `${styles.expenseFilterButton} ${styles.expenseFilterButtonActive}`
+              : styles.expenseFilterButton
+          }
+          onClick={() => setExpenseFilter('unfulfilled')}
+        >
+          Outstanding
+        </button>
+
+        <button
+          type="button"
+          className={
+            expenseFilter === 'fulfilled'
+              ? `${styles.expenseFilterButton} ${styles.expenseFilterButtonActive}`
+              : styles.expenseFilterButton
+          }
+          onClick={() => setExpenseFilter('fulfilled')}
+        >
+          Fulfilled
+        </button>
+      </Box>
+
+      {filteredExpenses.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          No expenses recorded for this group yet.
+          {expenseFilter === 'fulfilled'
+          ? 'No fulfilled expenses yet.'
+          : 'No outstanding expenses 🎉'}
         </Typography>
       ) : (
         <Stack spacing={2} sx={{ mt: 1 }}>
-          {expenses.map((expense) => (
+          {filteredExpenses.map((expense) => (
             <Card key={expense.id} className={styles.expenseCard}>
               <CardContent className={styles.expenseCardContent}>
                 <Stack
