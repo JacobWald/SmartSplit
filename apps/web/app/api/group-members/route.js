@@ -2,6 +2,94 @@ import { NextResponse } from 'next/server';
 import { createSSRClientFromRequest } from '@/lib/supabaseSSR';
 import { supabaseServer } from '@/lib/supabaseServer';
 
+//Add a new member to a group
+export async function POST(request) {
+  try {
+    const { supabase, response } = createSSRClientFromRequest(request);
+
+    // Auth
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !userData?.user) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401, headers: response.headers },
+      );
+    }
+    const currentUserId = userData.user.id;
+
+    const body = await request.json();
+    const { group_id, member_ids } = body || {};
+
+    if (!group_id || !Array.isArray(member_ids) || member_ids.length === 0) {
+      return NextResponse.json(
+        { error: 'Missing group_id or member_ids' },
+        { status: 400, headers: response.headers },
+      );
+    }
+
+    // Check caller is ADMIN in this group
+    const { data: gm, error: gmErr } = await supabaseServer
+      .from('group_members')
+      .select('role')
+      .eq('group_id', group_id)
+      .eq('user_id', currentUserId)
+      .single();
+
+    if (gmErr || !gm || gm.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Only group admins can add members' },
+        { status: 403, headers: response.headers },
+      );
+    }
+
+    const uniqueIds = [...new Set(member_ids)].filter(Boolean);
+
+    // Get already-existing members to avoid duplicates
+    const { data: existing, error: existingErr } = await supabaseServer
+      .from('group_members')
+      .select('user_id')
+      .eq('group_id', group_id)
+      .in('user_id', uniqueIds);
+
+    if (existingErr) throw existingErr;
+
+    const existingSet = new Set((existing || []).map((r) => r.user_id));
+    const toInsert = uniqueIds.filter((id) => !existingSet.has(id));
+
+    if (toInsert.length === 0) {
+      return NextResponse.json(
+        { error: 'All selected users are already in this group.' },
+        { status: 400, headers: response.headers },
+      );
+    }
+
+    const now = new Date().toISOString();
+    const rows = toInsert.map((id) => ({
+      group_id,
+      user_id: id,
+      role: 'MEMBER',
+      status: 'INVITED',
+      invited_at: now,
+    }));
+
+    const { data: inserted, error: insErr } = await supabaseServer
+      .from('group_members')
+      .insert(rows)
+      .select('group_id, user_id, role, status');
+
+    if (insErr) throw insErr;
+
+    return NextResponse.json(inserted, {
+      status: 201,
+      headers: response.headers,
+    });
+  } catch (err) {
+    console.error('POST /api/group-members error:', err);
+    const message = err instanceof Error ? err.message : 'Server error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
 //Update a group member's role
 export async function PATCH(request) {
   try {

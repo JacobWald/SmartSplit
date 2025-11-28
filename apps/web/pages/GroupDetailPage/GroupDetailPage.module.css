@@ -351,3 +351,15 @@
   background-color: var(--color-secondary) !important;
   color: var(--color-primary) !important;
 }
+
+/* Inputs in dialog */
+.inputs {
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+}
+
+.inputs :global(.MuiInputLabel-root) {
+  color: var(--color-primary) !important;
+}

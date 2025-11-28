@@ -18,6 +18,9 @@ import {
   DialogContent,
   DialogActions,
   Checkbox,
+  Autocomplete,
+  TextField,
+  Chip,
 } from '@mui/material';
 import AddExpenseDialog from '@/components/AddExpenseDialog';
 import styles from './GroupDetailPage.module.css';
@@ -52,6 +55,13 @@ export default function GroupDetailPage() {
   const [deleteMemberDialogOpen, setDeleteMemberDialogOpen] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState(null);
   const [deletingMember, setDeletingMember] = useState(false);
+
+  // Add members
+  const [friendProfiles, setFriendProfiles] = useState([]);
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [selectedNewMembers, setSelectedNewMembers] = useState([]);
+  const [addingMembers, setAddingMembers] = useState(false);
+  const [addMemberStatus, setAddMemberStatus] = useState('');
 
   const parseJSON = async (res) => {
     if (!res.ok) return null;
@@ -142,6 +152,31 @@ export default function GroupDetailPage() {
       }
     })();
   }, [slug]);
+
+  // Load friend profiles for "add member" dialog
+  useEffect(() => {
+    if (!group?.currentUserId) {
+      setFriendProfiles([]);
+      return;
+    }
+
+    (async () => {
+      try {
+        const friendId = group.currentUserId;
+        const fRes = await fetch(`/api/friends?friendId=${friendId}`);
+        const f = await parseJSON(fRes);
+
+        if (Array.isArray(f)) {
+          setFriendProfiles(f);
+        } else {
+          setFriendProfiles([]);
+        }
+      } catch (err) {
+        console.error('Failed to load friend profiles:', err);
+        setFriendProfiles([]);
+      }
+    })();
+  }, [group?.currentUserId]);
 
   if (loading) {
     return (
@@ -418,6 +453,54 @@ export default function GroupDetailPage() {
     }
   };
 
+  const handleAddMembers = async () => {
+    if (!group?.id) return;
+
+    const member_ids = [
+      ...new Set(selectedNewMembers.map((u) => u.id).filter(Boolean)),
+    ];
+
+    if (member_ids.length === 0) {
+      setAddMemberStatus('Please select at least one friend to add.');
+      return;
+    }
+
+    try {
+      setAddingMembers(true);
+      setAddMemberStatus('Inviting members…');
+
+      const res = await fetch('/api/group-members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          group_id: group.id,
+          member_ids,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        console.error('Error adding members:', data.error);
+        setAddMemberStatus(data.error || 'Failed to add members.');
+        return;
+      }
+
+      setAddMemberStatus('✅ Invitations sent.');
+      await reloadGroup(); // refresh member list
+
+      setTimeout(() => {
+        setAddMemberOpen(false);
+        setSelectedNewMembers([]);
+        setAddMemberStatus('');
+      }, 600);
+    } catch (err) {
+      console.error('Error adding members:', err);
+      setAddMemberStatus('Error adding members. Check console.');
+    } finally {
+      setAddingMembers(false);
+    }
+  };
+
   // Text for the role-change dialog
   const roleDialogTitle =
     roleDialogTargetRole === 'MODERATOR'
@@ -461,9 +544,29 @@ export default function GroupDetailPage() {
       </Stack>
 
       {/* Members */}
-      <Typography variant="h6" className={styles.sectionTitle}>
-        Members
-      </Typography>
+      <Stack
+        direction="row"
+        alignItems="center"
+        justifyContent="space-between"
+        sx={{ mt: 3, mb: 1 }}
+      >
+        <Typography variant="h6" className={styles.sectionTitle}>
+          Members
+        </Typography>
+
+        {isAdmin && (
+          <Button
+            className={styles.createButton}
+            onClick={() => {
+              setSelectedNewMembers([]);
+              setAddMemberStatus('');
+              setAddMemberOpen(true);
+            }}
+          >
+            Add members
+          </Button>
+        )}
+      </Stack>
 
       <List className={styles.memberList}>
         {group.members.map((m, idx) => {
@@ -741,7 +844,7 @@ export default function GroupDetailPage() {
           </Button>
         </DialogActions>
       </Dialog>
-      
+
       {/* Delete expense confirmation dialog */}
       <Dialog
         open={deleteExpenseDialogOpen}
@@ -816,20 +919,139 @@ export default function GroupDetailPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Reused dialog for both create + edit */}
-      <AddExpenseDialog
-        open={expenseOpen}
-        onClose={() => {
-          setExpenseOpen(false);
-          setEditingExpense(null);
-        }}
-        members={group.members}
-        onSubmit={handleExpenseSubmit}
-        loading={savingExpense}
-        groupName={group.name}
-        mode={editingExpense ? 'edit' : 'create'}
-        expense={editingExpense}
-      />
+      {/* Add members dialog */}
+      <Dialog
+        open={addMemberOpen}
+        onClose={() => !addingMembers && setAddMemberOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        slotProps={{ paper: { className: styles.confirmDialogPaper } }}
+      >
+        <DialogTitle className={styles.confirmDialogTitle}>
+          Add members to {group.name}
+        </DialogTitle>
+        <DialogContent className={styles.confirmDialogContent}>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {friendProfiles.length === 0 ? (
+              <Typography variant="body2">
+                You don&apos;t have any friends to add yet. Add friends from the profile page first.
+              </Typography>
+            ) : (
+              <>
+                <Typography variant="body2" className={styles.dialogueText}>
+                  Invite additional friends to this group. They&apos;ll appear with status
+                  &nbsp;
+                  <strong>INVITED</strong> until they accept.
+                </Typography>
+
+                {/* Options = friends who are NOT already in this group */}
+                <Autocomplete
+                  multiple
+                  options={friendProfiles.filter((f) =>
+                    !(group.members || []).some((m) => m.user_id === f.id)
+                  )}
+                  getOptionLabel={(u) => u?.username ?? ''}
+                  value={selectedNewMembers}
+                  onChange={(_, newValue) => setSelectedNewMembers(newValue)}
+                  className={styles.inputs}
+                  // sx={{
+                  //   '& .MuiInputBase-root': {
+                  //     backgroundColor: 'var(--color-bg)',
+                  //     color: 'var(--color-primary)',
+                  //     borderRadius: '12px',
+                  //   },
+                  //   '& .MuiInputLabel-root': {
+                  //     color: 'var(--color-primary)',
+                  //   },
+                  //   '& .MuiOutlinedInput-notchedOutline': {
+                  //     borderColor: 'var(--color-primary)',
+                  //   },
+                  //   '&:hover .MuiOutlinedInput-notchedOutline': {
+                  //     borderColor: 'var(--color-secondary)',
+                  //   },
+                  //   '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  //     borderColor: 'var(--color-secondary)',
+                  //   },
+                  // }}
+                  slotProps={{
+                    paper: {
+                    sx: {
+                        backgroundColor: "var(--color-bg)",     
+                        color: "var(--color-primary)",
+                        borderRadius: "12px",
+                        boxShadow: "0px 6px 20px rgba(0,0,0,0.25)",
+                    },
+                    },
+                    listbox: {
+                    sx: {
+                        "& .MuiAutocomplete-option": {
+                        // normal option
+                        "&:hover": {
+                            backgroundColor: "rgba(255,255,255,0.06)",
+                        },
+                        '&[aria-selected="true"]': {
+                            backgroundColor: "rgba(255,255,255,0.12)",
+                        },
+                        },
+                    },
+                    },
+                  }}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        {...getTagProps({ index })}
+                        key={option.id}
+                        label={option.username}
+                        sx={{
+                          backgroundColor: 'var(--color-bg)',
+                          color: 'var(--color-primary)',
+                          border: '1px solid var(--color-primary)',
+                        }}
+                      />
+                    ))
+                  }
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Add members (friends only)"
+                      placeholder="Type a name…"
+                    />
+                  )}
+                />
+              </>
+            )}
+
+            {addMemberStatus && (
+              <Typography
+                variant="body2"
+                sx={{ mt: 1 }}
+              >
+                {addMemberStatus}
+              </Typography>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setAddMemberOpen(false)}
+            disabled={addingMembers}
+            className={styles.confirmDialogButtonSecondary}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAddMembers}
+            disabled={
+              addingMembers ||
+              selectedNewMembers.length === 0 ||
+              friendProfiles.length === 0
+            }
+            className={styles.confirmDialogButtonPrimary}
+          >
+            {addingMembers ? 'Adding…' : 'Add'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Reused dialog for both create + edit */}
       <AddExpenseDialog
