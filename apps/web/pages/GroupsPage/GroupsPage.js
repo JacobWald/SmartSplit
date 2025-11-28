@@ -158,6 +158,10 @@ export default function GroupsPage() {
                                 <Typography variant="body2">
                                 Click “Create Group” above to start a new one!
                                 </Typography>
+                                <br />
+                                <Typography variant="body2">
+                                Or, accept an outstanding group invitation from a friend via the profile page.
+                                </Typography>
                             </Box>
                             ) : (
                             <div className={styles.groupGrid}>

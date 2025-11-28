@@ -53,11 +53,12 @@ export async function GET(request) {
     // optional ?groupId=... coming from GroupDetailPage
     const groupIdParam = request.nextUrl.searchParams.get('groupId')
 
-    // which groups does this user belong to?
+    // which groups does this user belong to w/ accepted status
     const { data: gmMine, error: gmMineErr } = await supabaseServer
       .from('group_members')
-      .select('group_id')
+      .select('group_id', 'status')
       .eq('user_id', uid)
+      .eq('status', 'ACCEPTED')
     if (gmMineErr) throw gmMineErr
 
     const groupIds = [...new Set((gmMine ?? []).map(r => r.group_id))]
