@@ -17,7 +17,7 @@ export async function POST(request) {
 
     const { data: groups, error: gErr } = await supabaseServer
       .from('groups')
-      .insert([{ name, base_currency, owner_id }])
+      .insert([{ name, base_currency, owner_id, active: true }])
       .select()
       .limit(1)
     if (gErr) throw gErr
@@ -70,7 +70,7 @@ export async function GET(request) {
     // fetch groups
     const { data: groups, error: gErr } = await supabaseServer
       .from('groups')
-      .select('id, name, base_currency')
+      .select('id, name, base_currency', 'active')
       .in('id', groupIds)
     if (gErr) throw gErr
 
@@ -105,6 +105,7 @@ export async function GET(request) {
       id: g.id,
       name: g.name,
       base_currency: g.base_currency,
+      active: g.active,
       members: membersByGroup[g.id] || [],
     }))
 
@@ -119,5 +120,59 @@ export async function GET(request) {
     return NextResponse.json(result, { status: 200, headers: response.headers })
   } catch (err) {
     return NextResponse.json({ error: err.message ?? 'Server error' }, { status: 500 })
+  }
+}
+
+// Toggle a group's active flag (admin only)
+export async function PATCH(request) {
+  try {
+    const { supabase, response } = createSSRClientFromRequest(request)
+
+    const { data: userData, error: userErr } = await supabase.auth.getUser()
+    if (userErr || !userData?.user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401, headers: response.headers })
+    }
+    const currentUserId = userData.user.id
+
+    const body = await request.json()
+    const { group_id, active } = body || {}
+
+    if (!group_id || typeof active !== 'boolean') {
+      return NextResponse.json(
+        { error: 'Missing group_id or active (boolean)' },
+        { status: 400, headers: response.headers }
+      )
+    }
+
+    // Check caller is ADMIN in this group
+    const { data: gm, error: gmErr } = await supabaseServer
+      .from('group_members')
+      .select('role')
+      .eq('group_id', group_id)
+      .eq('user_id', currentUserId)
+      .single()
+
+    if (gmErr || !gm || gm.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Only group admins can change active status' },
+        { status: 403, headers: response.headers }
+      )
+    }
+
+    const { data: updated, error: updErr } = await supabaseServer
+      .from('groups')
+      .update({ active })
+      .eq('id', group_id)
+      .select('id, name, base_currency, active')
+      .single()
+
+    if (updErr) throw updErr
+
+    return NextResponse.json(updated, { status: 200, headers: response.headers })
+  } catch (err) {
+    return NextResponse.json(
+      { error: err.message ?? 'Server error' },
+      { status: 500 }
+    )
   }
 }

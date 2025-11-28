@@ -20,6 +20,8 @@ export default function GroupsPage() {
     const [currentUser, setCurrentUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const [groupFilter, setGroupFilter] = useState('active');
+
     const parseJSON = async (res) => {
         if (!res.ok) return null;
         const text = await res.text();
@@ -65,6 +67,51 @@ export default function GroupsPage() {
         }
     })();
     }, []);
+
+    const filteredGroups = useMemo(() => {
+        if (!Array.isArray(groups)) return [];
+
+        if (groupFilter === 'inactive') {
+        return groups.filter(g => g.active === false);
+        }
+
+        // default: active 
+        return groups.filter(g => g.active !== false);
+    }, [groups, groupFilter]);
+
+    const handleToggleGroupActive = async (event, group) => {
+    // prevent navigating to the group when clicking the button
+    event.preventDefault();
+    event.stopPropagation();
+
+    try {
+        const res = await fetch('/api/groups', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            group_id: group.id,
+            active: !group.active,
+        }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+        console.error('Error toggling group active flag:', data.error);
+        alert(data.error || 'Failed to update group status.');
+        return;
+        }
+
+        // Update local groups state
+        setGroups(prev =>
+        prev.map(g =>
+            g.id === data.id ? { ...g, active: data.active } : g
+        )
+        );
+    } catch (err) {
+        console.error('Error toggling group active flag:', err);
+        alert('Error updating group status. Check console.');
+    }
+    };
 
     const handleCreate = async () => {
         try {
@@ -148,97 +195,156 @@ export default function GroupsPage() {
                             </Button>
                         </Stack>
 
+                        {/* Active / inactive filter bar */}
+                        <Box className={styles.groupFilterBar}>
+                            <Button
+                                type="button"
+                                className={
+                                groupFilter === 'active'
+                                    ? `${styles.groupFilterButton} ${styles.groupFilterButtonActive}`
+                                    : styles.groupFilterButton
+                                }
+                                onClick={() => setGroupFilter('active')}
+                            >
+                                ACTIVE
+                            </Button>
+
+                            <Button
+                                type="button"
+                                className={
+                                groupFilter === 'inactive'
+                                    ? `${styles.groupFilterButton} ${styles.groupFilterButtonActive}`
+                                    : styles.groupFilterButton
+                                }
+                                onClick={() => setGroupFilter('inactive')}
+                            >
+                                INACTIVE
+                            </Button>
+                        </Box>
+
                         {status && <Typography sx={{ mt: 1 }}>{status}</Typography>}
 
-                        {groups.length === 0 ? (
+                        {filteredGroups.length === 0 ? (
                             <Box className={styles.empty}>
                                 <Typography variant="h6" sx={{ mb: 1 }}>
-                                You are currently not in any groups.
+                                {groupFilter === 'inactive'
+                                    ? 'You have no inactive groups.'
+                                    : 'You have no active groups.'}
                                 </Typography>
+                                {groupFilter === 'active' && (
                                 <Typography variant="body2">
-                                Click “Create Group” above to start a new one!
+                                    Click “Create Group” above to start a new one, or accept an invitation from a friend.
                                 </Typography>
-                                <br />
-                                <Typography variant="body2">
-                                Or, accept an outstanding group invitation from a friend via the profile page.
-                                </Typography>
+                                )}
                             </Box>
                             ) : (
                             <div className={styles.groupGrid}>
-                                {groups.map(group => (
-                                    <CardActionArea key={group.id} component={Link} href={`/groups/${encodeURIComponent(group.id)}`} className={styles.groupCard}>
-                                        <CardContent className={styles.cardContent}>
-                                            <Typography variant="h6" className={styles.cardTitle}>
-                                            {group.name}
-                                            </Typography>
+                                {filteredGroups.map(group => {
+                                    const meInGroup = group.members.find(
+                                        (m) => m.user_id === currentUser.id
+                                    );
+                                    const isAdminInGroup = meInGroup?.role === 'ADMIN';
 
-                                            <FormControl fullWidth size="small" className={styles.selectOutline}>
-                                            <InputLabel className={styles.selectText}>Members</InputLabel>
-                                            <Select
-                                            label="Members"
-                                            displayEmpty
-                                            value=""
-                                            renderValue={() => "Members"}
-                                            sx={{
-                                                color: "var(--color-tertiary)", // text always white-ish
-                                                "& .MuiSelect-icon": {
-                                                color: "var(--color-tertiary)",
-                                                },
-                                                "& .MuiOutlinedInput-notchedOutline": {
-                                                borderColor: "var(--color-tertiary)",
-                                                },
-                                                "&:hover .MuiOutlinedInput-notchedOutline": {
-                                                borderColor: "var(--color-secondary)",
-                                                },
-                                                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                                                borderColor: "var(--color-secondary)",
-                                                },
-                                            }}
-                                            MenuProps={{
-                                                PaperProps: {
-                                                sx: {
-                                                    backgroundColor: "var(--color-bg)",
-                                                    color: "var(--color-primary)",
-                                                    borderRadius: "12px",
-                                                    boxShadow: "0px 6px 20px rgba(0,0,0,0.25)",
-                                                },
-                                                },
-                                            }}
-                                            >
-                                            {group.members.map((m) => (
-                                                <MenuItem2
-                                                key={m.user_id}
-                                                value={m.user_id}
-                                                disabled
+                                    return (
+                                        <CardActionArea
+                                        key={group.id}
+                                        component={Link}
+                                        href={`/groups/${encodeURIComponent(group.id)}`}
+                                        className={styles.groupCard}
+                                        >
+                                            <CardContent className={styles.cardContent}>
+                                                <Stack
+                                                direction="row"
+                                                alignItems="center"
+                                                justifyContent="space-between"
+                                                sx={{ mb: 1 }}
+                                                >
+                                                    <Typography variant="h6" className={styles.cardTitle}>
+                                                        {group.name}
+                                                    </Typography>
+
+                                                    {/* Active/inactive pill + toggle (admin only) */}
+                                                    <Stack direction="row" spacing={1} alignItems="center">
+                                                        {isAdminInGroup && (
+                                                        <Button
+                                                            size="small"
+                                                            className={styles.groupToggleButton}
+                                                            onClick={(e) => handleToggleGroupActive(e, group)}
+                                                        >
+                                                            {group.active !== false ? 'Set inactive' : 'Set active'}
+                                                        </Button>
+                                                        )}
+                                                    </Stack>
+                                                </Stack>
+
+                                                <FormControl fullWidth size="small" className={styles.selectOutline}>
+                                                <InputLabel className={styles.selectText}>Members</InputLabel>
+                                                <Select
+                                                label="Members"
+                                                displayEmpty
+                                                value=""
+                                                renderValue={() => "Members"}
                                                 sx={{
-                                                    opacity: 1,
-                                                    color: "var(--color-primary)",
-                                                    display: "flex",
-                                                    justifyContent: "space-between",
-                                                    alignItems: "center",
-                                                    "&.Mui-disabled": { opacity: 1, color: "var(--color-primary)" },
+                                                    color: "var(--color-tertiary)", // text always white-ish
+                                                    "& .MuiSelect-icon": {
+                                                    color: "var(--color-tertiary)",
+                                                    },
+                                                    "& .MuiOutlinedInput-notchedOutline": {
+                                                    borderColor: "var(--color-tertiary)",
+                                                    },
+                                                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                                                    borderColor: "var(--color-secondary)",
+                                                    },
+                                                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                                                    borderColor: "var(--color-secondary)",
+                                                    },
+                                                }}
+                                                MenuProps={{
+                                                    PaperProps: {
+                                                    sx: {
+                                                        backgroundColor: "var(--color-bg)",
+                                                        color: "var(--color-primary)",
+                                                        borderRadius: "12px",
+                                                        boxShadow: "0px 6px 20px rgba(0,0,0,0.25)",
+                                                    },
+                                                    },
                                                 }}
                                                 >
-                                                <Typography>{m.full_name}</Typography>
-                                                <Chip
-                                                    size="small"
-                                                    label={m.status}
-                                                    color={
-                                                    m.status === "ACCEPTED"
-                                                        ? "success"
-                                                        : m.status === "INVITED"
-                                                        ? "warning"
-                                                        : "default"
-                                                    }
-                                                    variant="outlined"
-                                                />
-                                                </MenuItem2>
-                                            ))}
-                                            </Select>
-                                            </FormControl>
-                                        </CardContent>
-                                    </CardActionArea>
-                                ))}
+                                                    {group.members.map((m) => (
+                                                        <MenuItem2
+                                                        key={m.user_id}
+                                                        value={m.user_id}
+                                                        disabled
+                                                        sx={{
+                                                            opacity: 1,
+                                                            color: "var(--color-primary)",
+                                                            display: "flex",
+                                                            justifyContent: "space-between",
+                                                            alignItems: "center",
+                                                            "&.Mui-disabled": { opacity: 1, color: "var(--color-primary)" },
+                                                        }}
+                                                        >
+                                                        <Typography>{m.full_name}</Typography>
+                                                        <Chip
+                                                            size="small"
+                                                            label={m.status}
+                                                            color={
+                                                            m.status === "ACCEPTED"
+                                                                ? "success"
+                                                                : m.status === "INVITED"
+                                                                ? "warning"
+                                                                : "default"
+                                                            }
+                                                            variant="outlined"
+                                                        />
+                                                        </MenuItem2>
+                                                    ))}
+                                                </Select>
+                                                </FormControl>
+                                            </CardContent>
+                                        </CardActionArea>
+                                    );
+                                })}
                             </div>
                         )}
 
