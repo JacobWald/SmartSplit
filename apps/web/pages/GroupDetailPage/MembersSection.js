@@ -405,25 +405,6 @@ export default function GroupMembersSection({
                         setSelectedNewMembers(newValue)
                       }
                       className={styles.inputs}
-                      sx={{
-                        '& .MuiInputBase-root': {
-                          backgroundColor: 'var(--color-bg)',
-                          color: 'var(--color-primary)',
-                          borderRadius: '12px',
-                        },
-                        '& .MuiInputLabel-root': {
-                          color: 'var(--color-primary)',
-                        },
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'var(--color-primary)',
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'var(--color-secondary)',
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: 'var(--color-secondary)',
-                        },
-                      }}
                       slotProps={{
                         paper: {
                           sx: {

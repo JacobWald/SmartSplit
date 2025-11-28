@@ -91,14 +91,6 @@
   color: var(--color-primary) !important;
 }
 
-/* Inputs in dialog */
-.inputs {
-  background-color: var(--color-bg) !important;
-  color: var(--color-primary) !important;
-  border-radius: 8px !important;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
-}
-
 /* Dialog look */
 .dialogPaper {
   background-color: var(--color-primary) !important;
@@ -156,6 +148,31 @@
   color: var(--color-primary) !important;
   border-radius: 8px !important;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+}
+
+.inputs :global(.MuiInputBase-root) {
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+}
+
+.inputs :global(.MuiFormLabel-root) {
+  color: var(--color-primary) !important;
+}
+
+.inputs :global(.MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline) {
+  border-color: var(--color-primary) !important;
+}
+
+.inputs :global(.MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline) {
+  border-color: var(--color-secondary) !important;
+}
+
+.inputs :global(.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline) {
+  border-color: var(--color-secondary) !important;
+}
+
+.inputs :global(.MuiSelect-select) {
+  color: var(--color-primary) !important;
 }
 
 .groupFilterBar {
