@@ -36,9 +36,10 @@ export default function GroupDetailPage() {
   const [savingExpense, setSavingExpense] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
 
-  // promote-confirm dialog state
-  const [promoteDialogOpen, setPromoteDialogOpen] = useState(false);
-  const [memberToPromote, setMemberToPromote] = useState(null);
+  // role-change dialog state (used for promote/demote)
+  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [roleDialogMember, setRoleDialogMember] = useState(null);
+  const [roleDialogTargetRole, setRoleDialogTargetRole] = useState(null);
 
   const [togglingAssignmentId, setTogglingAssignmentId] = useState(null);
 
@@ -57,6 +58,7 @@ export default function GroupDetailPage() {
   const isAdmin = currentRole === 'ADMIN';
   const isModerator = currentRole === 'MODERATOR';
   const canManageExpenses = isAdmin || isModerator;
+
   const canToggleAssignment = (assignmentUserId) => {
     if (!group?.currentUserId) return false;
     if (isAdmin || isModerator) return true;
@@ -175,13 +177,6 @@ export default function GroupDetailPage() {
         : '/api/expenses/create';
       const method = isEdit ? 'PUT' : 'POST';
 
-      console.log('Saving expense:', {
-        isEdit,
-        editingExpenseId: editingExpense?.id,
-        endpoint,
-        method,
-      });
-
       const res = await fetch(endpoint, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -236,17 +231,20 @@ export default function GroupDetailPage() {
     }
   };
 
-  // Open custom dialog to confirm promote to moderator
-  const handlePromoteToModerator = (member) => {
-    setMemberToPromote(member);
-    setPromoteDialogOpen(true);
+  // Open dialog to change a member's role (promote/demote)
+  const openRoleDialog = (member, targetRole) => {
+    setRoleDialogMember(member);
+    setRoleDialogTargetRole(targetRole); // 'MODERATOR' or 'MEMBER'
+    setRoleDialogOpen(true);
   };
 
-  // Call API to promote member to moderator
-  const confirmPromoteToModerator = async () => {
-    const member = memberToPromote;
-    if (!group?.id || !member) {
-      setPromoteDialogOpen(false);
+  // Call API to change member's role
+  const confirmChangeMemberRole = async () => {
+    const member = roleDialogMember;
+    const targetRole = roleDialogTargetRole;
+
+    if (!group?.id || !member || !targetRole) {
+      setRoleDialogOpen(false);
       return;
     }
 
@@ -257,30 +255,32 @@ export default function GroupDetailPage() {
         body: JSON.stringify({
           group_id: group.id,
           user_id: member.user_id,
-          role: 'MODERATOR',
+          role: targetRole,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        console.error('Error promoting member:', data.error);
-        alert(data.error || 'Failed to promote member');
+        console.error('Error changing member role:', data.error);
+        alert(data.error || 'Failed to change member role');
         return;
       }
 
       await reloadGroup();
     } catch (err) {
-      console.error('Error promoting member:', err);
-      alert('Error promoting member. Check console.');
+      console.error('Error changing member role:', err);
+      alert('Error changing member role. Check console.');
     } finally {
-      setPromoteDialogOpen(false);
-      setMemberToPromote(null);
+      setRoleDialogOpen(false);
+      setRoleDialogMember(null);
+      setRoleDialogTargetRole(null);
     }
   };
 
-  const closePromoteDialog = () => {
-    setPromoteDialogOpen(false);
-    setMemberToPromote(null);
+  const closeRoleDialog = () => {
+    setRoleDialogOpen(false);
+    setRoleDialogMember(null);
+    setRoleDialogTargetRole(null);
   };
 
   const handleToggleAssignedFulfilled = async (expenseId, assignment) => {
@@ -317,6 +317,21 @@ export default function GroupDetailPage() {
     }
   };
 
+  // Text for the role-change dialog
+  const roleDialogTitle =
+    roleDialogTargetRole === 'MODERATOR'
+      ? 'Promote to moderator'
+      : roleDialogTargetRole === 'MEMBER'
+      ? 'Set role to member'
+      : 'Change role';
+
+  const roleDialogMessage =
+    roleDialogMember && roleDialogTargetRole === 'MODERATOR'
+      ? `Promote ${roleDialogMember.full_name} to moderator?`
+      : roleDialogMember && roleDialogTargetRole === 'MEMBER'
+      ? `Set ${roleDialogMember.full_name}'s role back to member?`
+      : '';
+
   return (
     <Box sx={{ p: 4 }}>
       <Stack
@@ -352,11 +367,13 @@ export default function GroupDetailPage() {
       <List className={styles.memberList}>
         {group.members.map((m, idx) => {
           const isSelf = m.user_id === group.currentUserId;
-          const canPromote =
-            isAdmin &&
-            m.role === 'MEMBER' &&
-            m.status === 'ACCEPTED' &&
-            !isSelf;
+          const canModifyRole =
+            isAdmin && m.status === 'ACCEPTED' && !isSelf;
+
+          const showPromote =
+            canModifyRole && m.role === 'MEMBER';
+          const showDemote =
+            canModifyRole && m.role === 'MODERATOR';
 
           return (
             <div key={m.user_id}>
@@ -370,13 +387,23 @@ export default function GroupDetailPage() {
                   </Typography>
                 </Box>
 
-                {canPromote && (
+                {showPromote && (
                   <Button
                     size="small"
-                    onClick={() => handlePromoteToModerator(m)}
+                    onClick={() => openRoleDialog(m, 'MODERATOR')}
                     className={styles.memberActionButton}
                   >
                     Promote to moderator
+                  </Button>
+                )}
+
+                {showDemote && (
+                  <Button
+                    size="small"
+                    onClick={() => openRoleDialog(m, 'MEMBER')}
+                    className={styles.memberActionButton}
+                  >
+                    Demote to member
                   </Button>
                 )}
               </ListItem>
@@ -427,8 +454,8 @@ export default function GroupDetailPage() {
       {filteredExpenses.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
           {expenseFilter === 'fulfilled'
-          ? 'No fulfilled expenses yet.'
-          : 'No outstanding expenses 🎉'}
+            ? 'No fulfilled expenses yet.'
+            : 'No outstanding expenses 🎉'}
         </Typography>
       ) : (
         <Stack spacing={2} sx={{ mt: 1 }}>
@@ -443,7 +470,13 @@ export default function GroupDetailPage() {
                   className={styles.expenseHeader}
                 >
                   <Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                      }}
+                    >
                       <Typography className={styles.expenseTitle}>
                         {expense.title}
                       </Typography>
@@ -502,7 +535,9 @@ export default function GroupDetailPage() {
                             <Checkbox
                               size="small"
                               checked={!!ae.fulfilled}
-                              onChange={() => handleToggleAssignedFulfilled(expense.id, ae)}
+                              onChange={() =>
+                                handleToggleAssignedFulfilled(expense.id, ae)
+                              }
                               disabled={!canToggle || loading}
                               className={styles.splitCheckbox}
                             />
@@ -548,33 +583,29 @@ export default function GroupDetailPage() {
         </Stack>
       )}
 
-      {/* Promote-to-moderator confirmation dialog */}
+      {/* Role-change confirmation dialog (promote/demote) */}
       <Dialog
-        open={promoteDialogOpen}
-        onClose={closePromoteDialog}
+        open={roleDialogOpen}
+        onClose={closeRoleDialog}
         fullWidth
         maxWidth="xs"
         slotProps={{ paper: { className: styles.confirmDialogPaper } }}
       >
         <DialogTitle className={styles.confirmDialogTitle}>
-          Promote to moderator
+          {roleDialogTitle}
         </DialogTitle>
         <DialogContent className={styles.confirmDialogContent}>
-          <Typography>
-            {memberToPromote
-              ? `Promote ${memberToPromote.full_name} to moderator?`
-              : ''}
-          </Typography>
+          <Typography>{roleDialogMessage}</Typography>
         </DialogContent>
         <DialogActions>
           <Button
-            onClick={closePromoteDialog}
+            onClick={closeRoleDialog}
             className={styles.confirmDialogButtonSecondary}
           >
             Cancel
           </Button>
           <Button
-            onClick={confirmPromoteToModerator}
+            onClick={confirmChangeMemberRole}
             className={styles.confirmDialogButtonPrimary}
           >
             Confirm
