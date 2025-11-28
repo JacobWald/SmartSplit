@@ -375,6 +375,20 @@ export default function GroupsPage() {
                                 onChange={(e) => setCurrency(e.target.value)}
                                 fullWidth
                                 className={styles.inputs}
+                                slotProps={{
+                                    select: {
+                                    MenuProps: {
+                                        PaperProps: {
+                                        sx: {
+                                            backgroundColor: 'var(--color-bg)',
+                                            color: 'var(--color-primary)',
+                                            borderRadius: '12px',
+                                            boxShadow: '0px 6px 20px rgba(0,0,0,0.25)',
+                                        },
+                                        },
+                                    },
+                                    },
+                                }}
                                 >
                                 <MenuItem value="USD">USD</MenuItem>
                                 </TextField>
