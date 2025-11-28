@@ -6,6 +6,16 @@
     color: var(--color-tertiary) !important;
     background-color: var(--color-primary);
     padding: 1rem;
+
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 9999;
+}
+
+.navbarSpacer {
+    height: 80px; /* Adjust based on navbar height */
 }
 
 .navbar-left {

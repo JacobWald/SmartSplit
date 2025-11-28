@@ -150,7 +150,6 @@ export default function NavBar() {
           )}
         </div>
       </div>
-
       {/* Notification bar UNDER the navbar – only for pending friend requests */}
         {hasNotification && (
           <div className={styles.notificationBar}>

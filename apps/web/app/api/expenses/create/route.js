@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 
+// Create a new expense
 export async function POST(request) {
   try {
     const body = await request.json();
@@ -13,7 +14,7 @@ export async function POST(request) {
       );
     }
 
-    // 1. INSERT INTO expenses
+    // INSERT INTO expenses
     const { data: expenseData, error: expenseErr } = await supabaseServer
       .from("expenses")
       .insert([
@@ -33,7 +34,7 @@ export async function POST(request) {
 
     const expenseId = expenseData.id;
 
-    // 2. INSERT INTO assigned_expenses (one row per member)
+    // INSERT INTO assigned_expenses (one row per member)
     const rows = assigned.map((a) => ({
       expense_id: expenseId,
       user_id: a.user_id,

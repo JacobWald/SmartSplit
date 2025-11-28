@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createSSRClientFromRequest } from '../../../lib/supabaseSSR.js'
 import { supabaseServer } from '../../../lib/supabaseServer.js'
 
+// Create a new group
 export async function POST(request) {
   try {
     const { supabase, response } = createSSRClientFromRequest(request)
@@ -37,16 +38,7 @@ export async function POST(request) {
   }
 }
 
-function slugify(name = '') {
-  return name
-    .toString()
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '-')        // spaces -> dashes
-    .replace(/[^a-z0-9-]/g, '')  // drop punctuation
-    .replace(/-+/g, '-');        // collapse repeats
-}
-
+// Get groups for the current user (or a specific group if ?groupId=... is provided)
 export async function GET(request) {
   try {
     const { supabase, response } = createSSRClientFromRequest(request)
@@ -58,20 +50,21 @@ export async function GET(request) {
     }
     const uid = userData.user.id
 
-    // optional ?slug=... coming from GroupDetailPage
-    const slugParam = request.nextUrl.searchParams.get('slug')
+    // optional ?groupId=... coming from GroupDetailPage
+    const groupIdParam = request.nextUrl.searchParams.get('groupId')
 
-    // which groups does this user belong to?
+    // which groups does this user belong to w/ accepted status
     const { data: gmMine, error: gmMineErr } = await supabaseServer
       .from('group_members')
-      .select('group_id')
+      .select('group_id', 'status')
       .eq('user_id', uid)
+      .eq('status', 'ACCEPTED')
     if (gmMineErr) throw gmMineErr
 
     const groupIds = [...new Set((gmMine ?? []).map(r => r.group_id))]
     if (groupIds.length === 0) {
       // no groups at all
-      return NextResponse.json(slugParam ? null : [], { status: 200, headers: response.headers })
+      return NextResponse.json(groupIdParam ? null : [], { status: 200, headers: response.headers })
     }
 
     // fetch groups
@@ -115,9 +108,9 @@ export async function GET(request) {
       members: membersByGroup[g.id] || [],
     }))
 
-    // when ?slug=... is provided, return just that group (or null/404)
-    if (slugParam) {
-      const wanted = result.find(g => slugify(g.name) === slugParam)
+    // when ?groupId=... is provided, return just that group (or null/404)
+    if (groupIdParam) {
+      const wanted = result.find(g => g.id === groupIdParam)
       // return null w/ 200 so your client can show "not found" nicely
       return NextResponse.json(wanted ?? null, { status: 200, headers: response.headers })
     }

@@ -104,13 +104,6 @@ export default function GroupsPage() {
         }
     }
 
-    const slugify = (s) =>
-        s.toLowerCase()
-            .trim()
-            .replace(/[\s\_]+/g, '-')    
-            .replace(/[^a-z0-9\-]/g, '')    
-            .replace(/\-+/g, '-')   
-
     return (
         <>
             {loading ? (
@@ -165,11 +158,15 @@ export default function GroupsPage() {
                                 <Typography variant="body2">
                                 Click “Create Group” above to start a new one!
                                 </Typography>
+                                <br />
+                                <Typography variant="body2">
+                                Or, accept an outstanding group invitation from a friend via the profile page.
+                                </Typography>
                             </Box>
                             ) : (
                             <div className={styles.groupGrid}>
                                 {groups.map(group => (
-                                    <CardActionArea key={group.id} component={Link} href={`/groups/${encodeURIComponent(slugify(group.name))}`} className={styles.groupCard}>
+                                    <CardActionArea key={group.id} component={Link} href={`/groups/${encodeURIComponent(group.id)}`} className={styles.groupCard}>
                                         <CardContent className={styles.cardContent}>
                                             <Typography variant="h6" className={styles.cardTitle}>
                                             {group.name}
@@ -291,7 +288,7 @@ export default function GroupsPage() {
                                         slotProps={{
                                             paper: {
                                             sx: {
-                                                backgroundColor: "var(--color-bg)",      // same beige as rest of UI
+                                                backgroundColor: "var(--color-bg)",
                                                 color: "var(--color-primary)",
                                                 borderRadius: "12px",
                                                 boxShadow: "0px 6px 20px rgba(0,0,0,0.25)",

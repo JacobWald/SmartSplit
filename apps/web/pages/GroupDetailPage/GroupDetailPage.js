@@ -1,68 +1,148 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import {
-  Box,
-  Typography,
-  CircularProgress,
-  List,
-  ListItem,
-  Divider,
-  Stack,
-  Button,
-} from '@mui/material';
-import AddExpenseDialog from '@/components/AddExpenseDialog';
+import { Box, Typography, CircularProgress, Stack } from '@mui/material';
 import styles from './GroupDetailPage.module.css';
+import GroupMembersSection from './MembersSection';
+import ExpensesSection from './ExpensesSection';
 
 export default function GroupDetailPage() {
-  const { slug } = useParams();
+  const { slug } = useParams(); // group id (UUID)
 
   const [group, setGroup] = useState(null);
+  const [expenses, setExpenses] = useState([]);
+  const [friendProfiles, setFriendProfiles] = useState([]);
+  const [expenseFilter, setExpenseFilter] = useState('unfulfilled');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [expenseOpen, setExpenseOpen] = useState(false);
-  const [savingExpense, setSavingExpense] = useState(false);
+  const parseJSON = async (res) => {
+    if (!res.ok) return null;
+    const text = await res.text();
+    return text ? JSON.parse(text) : null;
+  };
 
-  // Fetch group details plus current user
+  // Fetch group + expenses + current user on mount / slug change
   useEffect(() => {
     if (!slug) return;
 
     (async () => {
       try {
-        const res = await fetch(`/api/groups?slug=${encodeURIComponent(slug)}`);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to fetch group');
+        setLoading(true);
+        setError('');
 
-        const groupObj = Array.isArray(data) ? data[0] : data;
+        const [gRes, eRes, meRes] = await Promise.all([
+          fetch(`/api/groups?groupId=${encodeURIComponent(slug)}`),
+          fetch(`/api/expenses?groupId=${encodeURIComponent(slug)}`),
+          fetch('/api/auth/me'),
+        ]);
 
-        const meRes = await fetch('/api/auth/me');
-        const me = await meRes.json();
+        const [g, e, me] = await Promise.all([
+          parseJSON(gRes),
+          parseJSON(eRes),
+          parseJSON(meRes),
+        ]);
+
+        const groupObj = Array.isArray(g) ? g[0] : g;
+
+        if (!groupObj) {
+          setGroup(null);
+          setExpenses([]);
+          return;
+        }
+
         if (me?.id) {
           groupObj.currentUserId = me.id;
         }
 
         setGroup(groupObj);
+        setExpenses(Array.isArray(e) ? e : []);
       } catch (err) {
         console.error(err);
-        setError(err.message);
+        setError(err.message || 'Failed to load group');
       } finally {
         setLoading(false);
       }
     })();
   }, [slug]);
 
+  // Load friend profiles for the "Add members" dialog
+  useEffect(() => {
+    if (!group?.currentUserId) {
+      setFriendProfiles([]);
+      return;
+    }
+
+    (async () => {
+      try {
+        const friendId = group.currentUserId;
+        const fRes = await fetch(`/api/friends?friendId=${friendId}`);
+        const f = await parseJSON(fRes);
+        setFriendProfiles(Array.isArray(f) ? f : []);
+      } catch (err) {
+        console.error('Failed to load friend profiles:', err);
+        setFriendProfiles([]);
+      }
+    })();
+  }, [group?.currentUserId]);
+
+  const currentMember = useMemo(() => {
+    if (!group?.members || !group.currentUserId) return null;
+    return group.members.find((m) => m.user_id === group.currentUserId) ?? null;
+  }, [group]);
+
+  const currentRole = currentMember?.role ?? null;
+  const isAdmin = currentRole === 'ADMIN';
+  const isModerator = currentRole === 'MODERATOR';
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const d = new Date(dateString);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString();
+  };
+
+  const memberNameFor = (userId) => {
+    if (!group?.members) return 'Unknown user';
+    const m = group.members.find((mem) => mem.user_id === userId);
+    return m?.full_name || 'Unknown user';
+  };
+
+  const reloadGroup = async () => {
+    try {
+      const gRes = await fetch(
+        `/api/groups?groupId=${encodeURIComponent(group.id)}`
+      );
+      const g = await parseJSON(gRes);
+      const groupObj = Array.isArray(g) ? g[0] : g;
+
+      if (groupObj && group.currentUserId) {
+        groupObj.currentUserId = group.currentUserId;
+      }
+
+      setGroup(groupObj);
+    } catch (err) {
+      console.error('Failed to reload group:', err);
+    }
+  };
+
+  const reloadExpenses = async () => {
+    if (!group?.id) return;
+    try {
+      const eRes = await fetch(
+        `/api/expenses?groupId=${encodeURIComponent(group.id)}`
+      );
+      const e = await parseJSON(eRes);
+      setExpenses(Array.isArray(e) ? e : []);
+    } catch (err) {
+      console.error('Failed to reload expenses:', err);
+    }
+  };
+
   if (loading) {
     return (
-      <Box
-        sx={{
-          height: '70vh',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
+      <Box className={styles.loadingBox}>
         <CircularProgress />
       </Box>
     );
@@ -78,96 +158,46 @@ export default function GroupDetailPage() {
     );
   }
 
-  const handleCreateExpense = async ({ title, amount, assigned }) => {
-    if (!group?.id || !group.currentUserId) {
-      console.error('Missing group id or current user id');
-      return;
-    }
-
-    try {
-      setSavingExpense(true);
-
-      const res = await fetch('/api/expenses/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          amount,
-          group_id: group.id,
-          payer_id: group.currentUserId,
-          assigned,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        console.error('Error creating expense:', data.error);
-        alert(data.error || 'Failed to create expense');
-        return;
-      }
-
-      setExpenseOpen(false);
-      // Jacob will handle displaying expenses for the group, so we do not need
-      // to reload anything here yet.
-    } catch (err) {
-      console.error('Error creating expense:', err);
-      alert('Error creating expense. Check console.');
-    } finally {
-      setSavingExpense(false);
-    }
-  };
-
   return (
     <Box sx={{ p: 4 }}>
+      {/* Header */}
       <Stack
         direction="row"
         alignItems="center"
         justifyContent="space-between"
         sx={{ mb: 2 }}
       >
-        <Typography variant="h4">{group.name}</Typography>
-
-        <Button
-          className={styles.createButton}
-          onClick={() => setExpenseOpen(true)}
-        >
-          Add Expense
-        </Button>
+        <Box>
+          <Typography variant="h4" className={styles.groupTitle}>
+            {group.name}
+          </Typography>
+          <Typography variant="body2" className={styles.baseCurrency}>
+            Base Currency: {group.base_currency}
+          </Typography>
+        </Box>
       </Stack>
 
-      <Typography variant="body1" sx={{ mb: 4 }}>
-        Base Currency: {group.base_currency}
-      </Typography>
+      {/* Members */}
+      <GroupMembersSection
+        group={group}
+        isAdmin={isAdmin}
+        currentUserId={group.currentUserId}
+        friendProfiles={friendProfiles}
+        onGroupUpdated={reloadGroup}
+      />
 
-      <Typography variant="h6" sx={{ mb: 1 }}>
-        Members
-      </Typography>
-
-      <List sx={{ border: '1px solid #ccc', borderRadius: 2 }}>
-        {group.members.map((m) => (
-          <div key={m.user_id}>
-            <ListItem>
-              {m.full_name} — {m.role} ({m.status})
-            </ListItem>
-            <Divider />
-          </div>
-        ))}
-      </List>
-
-      <Typography variant="h6" sx={{ mt: 4, mb: 1 }}>
-        Expenses
-      </Typography>
-      <Typography variant="body2">
-        Expense display for this group will be handled by Jacob’s component.
-      </Typography>
-
-      <AddExpenseDialog
-        open={expenseOpen}
-        onClose={() => setExpenseOpen(false)}
-        members={group.members}
-        onSubmit={handleCreateExpense}
-        loading={savingExpense}
-        groupName={group.name}
+      {/* Expenses */}
+      <ExpensesSection
+        group={group}
+        expenses={expenses}
+        expenseFilter={expenseFilter}
+        setExpenseFilter={setExpenseFilter}
+        isAdmin={isAdmin}
+        isModerator={isModerator}
+        currentUserId={group.currentUserId}
+        onExpensesUpdated={reloadExpenses}
+        memberNameFor={memberNameFor}
+        formatDate={formatDate}
       />
     </Box>
   );
