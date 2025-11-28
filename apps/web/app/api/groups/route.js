@@ -70,7 +70,7 @@ export async function GET(request) {
     // fetch groups
     const { data: groups, error: gErr } = await supabaseServer
       .from('groups')
-      .select('id, name, base_currency', 'active')
+      .select('id, name, base_currency, active')
       .in('id', groupIds)
     if (gErr) throw gErr
 

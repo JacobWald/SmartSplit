@@ -96,6 +96,8 @@ export default function GroupDetailPage() {
   const isAdmin = currentRole === 'ADMIN';
   const isModerator = currentRole === 'MODERATOR';
 
+  const isReadOnly = group?.active === false; 
+
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const d = new Date(dateString);
@@ -174,6 +176,15 @@ export default function GroupDetailPage() {
           <Typography variant="body2" className={styles.baseCurrency}>
             Base Currency: {group.base_currency}
           </Typography>
+          {isReadOnly && (
+            <Typography
+              variant="body2"
+              className={styles.readOnlyNotice}
+              sx={{ mt: 0.5 }}
+            >
+              This group is <strong>inactive</strong>. Details are read-only.
+            </Typography>
+          )}
         </Box>
       </Stack>
 
@@ -184,6 +195,7 @@ export default function GroupDetailPage() {
         currentUserId={group.currentUserId}
         friendProfiles={friendProfiles}
         onGroupUpdated={reloadGroup}
+        isReadOnly={isReadOnly}       
       />
 
       {/* Expenses */}
@@ -198,6 +210,7 @@ export default function GroupDetailPage() {
         onExpensesUpdated={reloadExpenses}
         memberNameFor={memberNameFor}
         formatDate={formatDate}
+        isReadOnly={isReadOnly}      
       />
     </Box>
   );
