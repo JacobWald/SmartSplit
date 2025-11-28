@@ -25,6 +25,7 @@ export default function GroupMembersSection({
   currentUserId,
   friendProfiles,
   onGroupUpdated,
+  isReadOnly,         
 }) {
   // role-change dialog
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
@@ -43,6 +44,7 @@ export default function GroupMembersSection({
   const [addMemberStatus, setAddMemberStatus] = useState('');
 
   const openRoleDialog = (member, targetRole) => {
+    if (isReadOnly) return;
     setRoleDialogMember(member);
     setRoleDialogTargetRole(targetRole); // 'MODERATOR' or 'MEMBER'
     setRoleDialogOpen(true);
@@ -91,6 +93,7 @@ export default function GroupMembersSection({
   };
 
   const openDeleteMemberDialog = (member) => {
+    if (isReadOnly) return;
     setMemberToDelete(member);
     setDeleteMemberDialogOpen(true);
   };
@@ -210,7 +213,7 @@ export default function GroupMembersSection({
           Members
         </Typography>
 
-        {isAdmin && (
+        {!isReadOnly && isAdmin && (
           <Button
             className={styles.createButton}
             onClick={() => {
@@ -229,7 +232,7 @@ export default function GroupMembersSection({
         {group.members.map((m, idx) => {
           const isSelf = m.user_id === currentUserId;
           const canModifyRole =
-            isAdmin && m.status === 'ACCEPTED' && !isSelf;
+            !isReadOnly && isAdmin && m.status === 'ACCEPTED' && !isSelf;
 
           const showPromote = canModifyRole && m.role === 'MEMBER';
           const showDemote = canModifyRole && m.role === 'MODERATOR';
@@ -246,38 +249,40 @@ export default function GroupMembersSection({
                   </Typography>
                 </Box>
 
-                <Stack direction="row" spacing={1}>
-                  {showPromote && (
-                    <Button
-                      size="small"
-                      onClick={() => openRoleDialog(m, 'MODERATOR')}
-                      className={styles.memberActionButton}
-                    >
-                      Promote to moderator
-                    </Button>
-                  )}
+                {!isReadOnly && (
+                  <Stack direction="row" spacing={1}>
+                    {showPromote && (
+                      <Button
+                        size="small"
+                        onClick={() => openRoleDialog(m, 'MODERATOR')}
+                        className={styles.memberActionButton}
+                      >
+                        Promote to moderator
+                      </Button>
+                    )}
 
-                  {showDemote && (
-                    <Button
-                      size="small"
-                      onClick={() => openRoleDialog(m, 'MEMBER')}
-                      className={styles.memberActionButton}
-                    >
-                      Demote to member
-                    </Button>
-                  )}
+                    {showDemote && (
+                      <Button
+                        size="small"
+                        onClick={() => openRoleDialog(m, 'MEMBER')}
+                        className={styles.memberActionButton}
+                      >
+                        Demote to member
+                      </Button>
+                    )}
 
-                  {canModifyRole && (
-                    <Button
-                      size="small"
-                      onClick={() => openDeleteMemberDialog(m)}
-                      className={styles.memberDeleteButton}
-                      color="error"
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </Stack>
+                    {canModifyRole && (
+                      <Button
+                        size="small"
+                        onClick={() => openDeleteMemberDialog(m)}
+                        className={styles.memberDeleteButton}
+                        color="error"
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </Stack>
+                )}
               </ListItem>
               {idx < group.members.length - 1 && (
                 <Divider className={styles.memberDivider} />
@@ -287,204 +292,215 @@ export default function GroupMembersSection({
         })}
       </List>
 
-      {/* Role-change dialog */}
-      <Dialog
-        open={roleDialogOpen}
-        onClose={closeRoleDialog}
-        fullWidth
-        maxWidth="xs"
-        slotProps={{ paper: { className: styles.confirmDialogPaper } }}
-      >
-        <DialogTitle className={styles.confirmDialogTitle}>
-          {roleDialogTitle}
-        </DialogTitle>
-        <DialogContent className={styles.confirmDialogContent}>
-          <Typography>{roleDialogMessage}</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={closeRoleDialog}
-            className={styles.confirmDialogButtonSecondary}
+      {/* Dialogs only when NOT read-only */}
+      {!isReadOnly && (
+        <>
+          {/* Role-change dialog */}
+          <Dialog
+            open={roleDialogOpen}
+            onClose={closeRoleDialog}
+            fullWidth
+            maxWidth="xs"
+            slotProps={{ paper: { className: styles.confirmDialogPaper } }}
           >
-            Cancel
-          </Button>
-          <Button
-            onClick={confirmChangeMemberRole}
-            className={styles.confirmDialogButtonPrimary}
-          >
-            Confirm
-          </Button>
-        </DialogActions>
-      </Dialog>
+            <DialogTitle className={styles.confirmDialogTitle}>
+              {roleDialogTitle}
+            </DialogTitle>
+            <DialogContent className={styles.confirmDialogContent}>
+              <Typography>{roleDialogMessage}</Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={closeRoleDialog}
+                className={styles.confirmDialogButtonSecondary}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmChangeMemberRole}
+                className={styles.confirmDialogButtonPrimary}
+              >
+                Confirm
+              </Button>
+            </DialogActions>
+          </Dialog>
 
-      {/* Delete member dialog */}
-      <Dialog
-        open={deleteMemberDialogOpen}
-        onClose={closeDeleteMemberDialog}
-        fullWidth
-        maxWidth="xs"
-        slotProps={{ paper: { className: styles.confirmDialogPaper } }}
-      >
-        <DialogTitle className={styles.confirmDialogTitle}>
-          Remove member
-        </DialogTitle>
-        <DialogContent className={styles.confirmDialogContent}>
-          <Typography>
-            {memberToDelete
-              ? `Remove ${memberToDelete.full_name} from this group? They must not be part of any outstanding expenses.`
-              : ''}
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={closeDeleteMemberDialog}
-            className={styles.confirmDialogButtonSecondary}
-            disabled={deletingMember}
+          {/* Delete member dialog */}
+          <Dialog
+            open={deleteMemberDialogOpen}
+            onClose={closeDeleteMemberDialog}
+            fullWidth
+            maxWidth="xs"
+            slotProps={{ paper: { className: styles.confirmDialogPaper } }}
           >
-            Cancel
-          </Button>
-          <Button
-            onClick={confirmDeleteMember}
-            className={styles.confirmDialogButtonPrimary}
-            color="error"
-            disabled={deletingMember}
-          >
-            {deletingMember ? 'Removing…' : 'Remove'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Add members dialog */}
-      <Dialog
-        open={addMemberOpen}
-        onClose={() => !addingMembers && setAddMemberOpen(false)}
-        fullWidth
-        maxWidth="sm"
-        slotProps={{ paper: { className: styles.confirmDialogPaper } }}
-      >
-        <DialogTitle className={styles.confirmDialogTitle}>
-          Add members to {group.name}
-        </DialogTitle>
-        <DialogContent className={styles.confirmDialogContent}>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            {friendProfiles.length === 0 ? (
-              <Typography variant="body2">
-                You don&apos;t have any friends to add yet. Add friends from
-                the profile page first.
+            <DialogTitle className={styles.confirmDialogTitle}>
+              Remove member
+            </DialogTitle>
+            <DialogContent className={styles.confirmDialogContent}>
+              <Typography>
+                {memberToDelete
+                  ? `Remove ${memberToDelete.full_name} from this group? They must not be part of any outstanding expenses.`
+                  : ''}
               </Typography>
-            ) : (
-              <>
-                <Typography variant="body2" className={styles.dialogueText}>
-                  Invite additional friends to this group. They&apos;ll appear
-                  with status <strong>INVITED</strong> until they accept.
-                </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={closeDeleteMemberDialog}
+                className={styles.confirmDialogButtonSecondary}
+                disabled={deletingMember}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmDeleteMember}
+                className={styles.confirmDialogButtonPrimary}
+                color="error"
+                disabled={deletingMember}
+              >
+                {deletingMember ? 'Removing…' : 'Remove'}
+              </Button>
+            </DialogActions>
+          </Dialog>
 
-                <Autocomplete
-                  multiple
-                  options={friendProfiles.filter(
-                    (f) =>
-                      !(group.members || []).some(
-                        (m) => m.user_id === f.id
-                      )
-                  )}
-                  getOptionLabel={(u) => u?.username ?? ''}
-                  value={selectedNewMembers}
-                  onChange={(_, newValue) => setSelectedNewMembers(newValue)}
-                  className={styles.inputs}
-                  sx={{
-                    '& .MuiInputBase-root': {
-                      backgroundColor: 'var(--color-bg)',
-                      color: 'var(--color-primary)',
-                      borderRadius: '12px',
-                    },
-                    '& .MuiInputLabel-root': {
-                      color: 'var(--color-primary)',
-                    },
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'var(--color-primary)',
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'var(--color-secondary)',
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'var(--color-secondary)',
-                    },
-                  }}
-                  slotProps={{
-                    paper: {
-                      sx: {
-                        backgroundColor: 'var(--color-bg)',
-                        color: 'var(--color-primary)',
-                        borderRadius: '12px',
-                        boxShadow: '0px 6px 20px rgba(0,0,0,0.25)',
-                      },
-                    },
-                    listbox: {
-                      sx: {
-                        '& .MuiAutocomplete-option': {
-                          '&:hover': {
-                            backgroundColor: 'rgba(255,255,255,0.06)',
-                          },
-                          '&[aria-selected="true"]': {
-                            backgroundColor: 'rgba(255,255,255,0.12)',
-                          },
-                        },
-                      },
-                    },
-                  }}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        {...getTagProps({ index })}
-                        key={option.id}
-                        label={option.username}
-                        sx={{
+          {/* Add members dialog */}
+          <Dialog
+            open={addMemberOpen}
+            onClose={() => !addingMembers && setAddMemberOpen(false)}
+            fullWidth
+            maxWidth="sm"
+            slotProps={{ paper: { className: styles.confirmDialogPaper } }}
+          >
+            <DialogTitle className={styles.confirmDialogTitle}>
+              Add members to {group.name}
+            </DialogTitle>
+            <DialogContent className={styles.confirmDialogContent}>
+              <Stack spacing={2} sx={{ mt: 1 }}>
+                {friendProfiles.length === 0 ? (
+                  <Typography variant="body2">
+                    You don&apos;t have any friends to add yet. Add friends
+                    from the profile page first.
+                  </Typography>
+                ) : (
+                  <>
+                    <Typography
+                      variant="body2"
+                      className={styles.dialogueText}
+                    >
+                      Invite additional friends to this group. They&apos;ll
+                      appear with status <strong>INVITED</strong> until they
+                      accept.
+                    </Typography>
+
+                    <Autocomplete
+                      multiple
+                      options={friendProfiles.filter(
+                        (f) =>
+                          !(group.members || []).some(
+                            (m) => m.user_id === f.id
+                          )
+                      )}
+                      getOptionLabel={(u) => u?.username ?? ''}
+                      value={selectedNewMembers}
+                      onChange={(_, newValue) =>
+                        setSelectedNewMembers(newValue)
+                      }
+                      className={styles.inputs}
+                      sx={{
+                        '& .MuiInputBase-root': {
                           backgroundColor: 'var(--color-bg)',
                           color: 'var(--color-primary)',
-                          border: '1px solid var(--color-primary)',
-                        }}
-                      />
-                    ))
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Add members (friends only)"
-                      placeholder="Type a name…"
+                          borderRadius: '12px',
+                        },
+                        '& .MuiInputLabel-root': {
+                          color: 'var(--color-primary)',
+                        },
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: 'var(--color-primary)',
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: 'var(--color-secondary)',
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: 'var(--color-secondary)',
+                        },
+                      }}
+                      slotProps={{
+                        paper: {
+                          sx: {
+                            backgroundColor: 'var(--color-bg)',
+                            color: 'var(--color-primary)',
+                            borderRadius: '12px',
+                            boxShadow: '0px 6px 20px rgba(0,0,0,0.25)',
+                          },
+                        },
+                        listbox: {
+                          sx: {
+                            '& .MuiAutocomplete-option': {
+                              '&:hover': {
+                                backgroundColor: 'rgba(255,255,255,0.06)',
+                              },
+                              '&[aria-selected="true"]': {
+                                backgroundColor: 'rgba(255,255,255,0.12)',
+                              },
+                            },
+                          },
+                        },
+                      }}
+                      renderTags={(value, getTagProps) =>
+                        value.map((option, index) => (
+                          <Chip
+                            {...getTagProps({ index })}
+                            key={option.id}
+                            label={option.username}
+                            sx={{
+                              backgroundColor: 'var(--color-bg)',
+                              color: 'var(--color-primary)',
+                              border: '1px solid var(--color-primary)',
+                            }}
+                          />
+                        ))
+                      }
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Add members (friends only)"
+                          placeholder="Type a name…"
+                        />
+                      )}
                     />
-                  )}
-                />
-              </>
-            )}
+                  </>
+                )}
 
-            {addMemberStatus && (
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                {addMemberStatus}
-              </Typography>
-            )}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => setAddMemberOpen(false)}
-            disabled={addingMembers}
-            className={styles.confirmDialogButtonSecondary}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleAddMembers}
-            disabled={
-              addingMembers ||
-              selectedNewMembers.length === 0 ||
-              friendProfiles.length === 0
-            }
-            className={styles.confirmDialogButtonPrimary}
-          >
-            {addingMembers ? 'Adding…' : 'Add'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+                {addMemberStatus && (
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    {addMemberStatus}
+                  </Typography>
+                )}
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={() => setAddMemberOpen(false)}
+                disabled={addingMembers}
+                className={styles.confirmDialogButtonSecondary}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddMembers}
+                disabled={
+                  addingMembers ||
+                  selectedNewMembers.length === 0 ||
+                  friendProfiles.length === 0
+                }
+                className={styles.confirmDialogButtonPrimary}
+              >
+                {addingMembers ? 'Adding…' : 'Add'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </>
+      )}
     </>
   );
 }
