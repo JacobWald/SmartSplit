@@ -1,0 +1,109 @@
+.dialogPaper {
+  background-color: var(--color-primary) !important;
+  color: var(--color-tertiary) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25) !important;
+  max-width: 560px !important;
+  width: 92vw !important;
+}
+
+.dialogTitle {
+  color: var(--color-tertiary) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px;
+}
+
+.dialogContent {
+  color: var(--color-tertiary) !important;
+}
+
+/* TextFields inside dialog */
+.inputs :global(.MuiInputBase-root),
+.inputs :global(.MuiOutlinedInput-root) {
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+}
+
+.inputs :global(.MuiOutlinedInput-notchedOutline) {
+  border-color: transparent !important;
+}
+
+.inputs :global(.MuiInputLabel-root) {
+  color: var(--color-primary) !important;
+}
+
+/* Buttons at the bottom */
+.dialogButton {
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 6px 14px !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15) !important;
+  transition: background-color .2s ease-in-out !important;
+}
+
+.dialogButton:hover {
+  background-color: var(--color-secondary) !important;
+}
+
+/* Each member row in the split list */
+.memberRow {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.memberLabel {
+  flex-grow: 1;
+  color: var(--color-tertiary);
+}
+
+.customAmountField {
+  width: 120px;
+}
+
+.splitMethodLabel {
+  color: var(--color-tertiary);
+  font-weight: 500;
+}
+
+/* Helper text in dialog */
+.helperText {
+  color: var(--color-tertiary);
+  opacity: 0.9;
+  font-size: 0.85rem;
+}
+
+/* ===== RADIO BUTTONS ===== */
+.dialogContent :global(.MuiRadio-root) {
+  color: var(--color-tertiary) !important; /* outline + hover */
+}
+
+.dialogContent :global(.MuiRadio-root.Mui-checked) {
+  color: var(--color-secondary) !important; /* checked circle */
+}
+
+/* Hover color */
+.dialogContent :global(.MuiRadio-root:hover) {
+  background-color: rgba(255,255,255,0.12) !important;
+  border-radius: 50%;
+}
+
+/* ===== CHECKBOXES ===== */
+.dialogContent :global(.MuiCheckbox-root) {
+  color: var(--color-tertiary) !important; /* unchecked outline */
+}
+
+.dialogContent :global(.MuiCheckbox-root.Mui-checked) {
+  color: var(--color-secondary) !important; /* checked square */
+}
+
+.dialogContent :global(.MuiCheckbox-root:hover) {
+  background-color: rgba(255,255,255,0.12) !important;
+  border-radius: 4px;
+}
+

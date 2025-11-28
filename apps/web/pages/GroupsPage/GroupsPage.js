@@ -104,13 +104,6 @@ export default function GroupsPage() {
         }
     }
 
-    const slugify = (s) =>
-        s.toLowerCase()
-            .trim()
-            .replace(/[\s\_]+/g, '-')    
-            .replace(/[^a-z0-9\-]/g, '')    
-            .replace(/\-+/g, '-')   
-
     return (
         <>
             {loading ? (
@@ -169,7 +162,7 @@ export default function GroupsPage() {
                             ) : (
                             <div className={styles.groupGrid}>
                                 {groups.map(group => (
-                                    <CardActionArea key={group.id} component={Link} href={`/groups/${encodeURIComponent(slugify(group.name))}`} className={styles.groupCard}>
+                                    <CardActionArea key={group.id} component={Link} href={`/groups/${encodeURIComponent(group.id)}`} className={styles.groupCard}>
                                         <CardContent className={styles.cardContent}>
                                             <Typography variant="h6" className={styles.cardTitle}>
                                             {group.name}
