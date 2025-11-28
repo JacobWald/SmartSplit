@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSSRClientFromRequest } from '../../../lib/supabaseSSR.js';
 import { supabaseServer } from '../../../lib/supabaseServer.js';
 
+// Get expenses for a group or user
 export async function GET(request) {
   try {
     const { supabase, response } = createSSRClientFromRequest(request);
@@ -47,13 +48,15 @@ export async function GET(request) {
           amount,
           note,
           occurred_at,
+          fulfilled,
           assigned:assigned_expenses (
             id,
             user_id,
             amount,
             percent,
             ratio_part,
-            created_at
+            created_at,
+            fulfilled
           )
         `,
         )
@@ -82,7 +85,8 @@ export async function GET(request) {
         amount,
         percent,
         ratio_part,
-        created_at
+        created_at,
+        fulfilled
       `,
       )
       .eq('user_id', userId);
@@ -111,6 +115,7 @@ export async function GET(request) {
         amount,
         note,
         occurred_at,
+        fulfilled
       `,
       )
       .in('id', expenseIds);
@@ -130,6 +135,7 @@ export async function GET(request) {
         percent: a.percent,
         ratio_part: a.ratio_part,
         created_at: a.created_at,
+        fulfilled: a.fulfilled,
       });
     }
 

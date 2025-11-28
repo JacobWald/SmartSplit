@@ -13,6 +13,11 @@ import {
   Button,
   Card,
   CardContent,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Checkbox,
 } from '@mui/material';
 import AddExpenseDialog from '@/components/AddExpenseDialog';
 import styles from './GroupDetailPage.module.css';
@@ -28,8 +33,13 @@ export default function GroupDetailPage() {
 
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [savingExpense, setSavingExpense] = useState(false);
-  // null = create mode; non-null = edit this expense
   const [editingExpense, setEditingExpense] = useState(null);
+
+  // promote-confirm dialog state
+  const [promoteDialogOpen, setPromoteDialogOpen] = useState(false);
+  const [memberToPromote, setMemberToPromote] = useState(null);
+
+  const [togglingAssignmentId, setTogglingAssignmentId] = useState(null);
 
   const parseJSON = async (res) => {
     if (!res.ok) return null;
@@ -37,12 +47,21 @@ export default function GroupDetailPage() {
     return text ? JSON.parse(text) : null;
   };
 
-  const isAdmin = useMemo(() => {
-    if (!group?.members || !group.currentUserId) return false;
-    return group.members.some(
-      (m) => m.user_id === group.currentUserId && m.role === 'ADMIN',
-    );
+  const currentMember = useMemo(() => {
+    if (!group?.members || !group.currentUserId) return null;
+    return group.members.find((m) => m.user_id === group.currentUserId) ?? null;
   }, [group]);
+
+  const currentRole = currentMember?.role ?? null;
+  const isAdmin = currentRole === 'ADMIN';
+  const isModerator = currentRole === 'MODERATOR';
+  const canManageExpenses = isAdmin || isModerator;
+  const canToggleAssignment = (assignmentUserId) => {
+    if (!group?.currentUserId) return false;
+    if (isAdmin || isModerator) return true;
+    return assignmentUserId === group.currentUserId;
+  };
+
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -152,7 +171,6 @@ export default function GroupDetailPage() {
         method,
       });
 
-
       const res = await fetch(endpoint, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -174,7 +192,7 @@ export default function GroupDetailPage() {
 
       // Reload expenses so the list updates
       const eRes = await fetch(
-        `/api/expenses?groupId=${encodeURIComponent(group.id)}`,
+        `/api/expenses?groupId=${encodeURIComponent(group.id)}`
       );
       const e = await parseJSON(eRes);
       setExpenses(Array.isArray(e) ? e : []);
@@ -186,6 +204,105 @@ export default function GroupDetailPage() {
       alert('Error saving expense. Check console.');
     } finally {
       setSavingExpense(false);
+    }
+  };
+
+  const reloadGroup = async () => {
+    try {
+      const gRes = await fetch(
+        `/api/groups?groupId=${encodeURIComponent(group.id)}`
+      );
+      const g = await parseJSON(gRes);
+      const groupObj = Array.isArray(g) ? g[0] : g;
+
+      if (groupObj && group.currentUserId) {
+        groupObj.currentUserId = group.currentUserId;
+      }
+
+      setGroup(groupObj);
+    } catch (err) {
+      console.error('Failed to reload group after role change:', err);
+    }
+  };
+
+  // Open custom dialog to confirm promote to moderator
+  const handlePromoteToModerator = (member) => {
+    setMemberToPromote(member);
+    setPromoteDialogOpen(true);
+  };
+
+  // Call API to promote member to moderator
+  const confirmPromoteToModerator = async () => {
+    const member = memberToPromote;
+    if (!group?.id || !member) {
+      setPromoteDialogOpen(false);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/group-members', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          group_id: group.id,
+          user_id: member.user_id,
+          role: 'MODERATOR',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        console.error('Error promoting member:', data.error);
+        alert(data.error || 'Failed to promote member');
+        return;
+      }
+
+      await reloadGroup();
+    } catch (err) {
+      console.error('Error promoting member:', err);
+      alert('Error promoting member. Check console.');
+    } finally {
+      setPromoteDialogOpen(false);
+      setMemberToPromote(null);
+    }
+  };
+
+  const closePromoteDialog = () => {
+    setPromoteDialogOpen(false);
+    setMemberToPromote(null);
+  };
+
+  const handleToggleAssignedFulfilled = async (expenseId, assignment) => {
+    if (!assignment?.id) return;
+    if (!canToggleAssignment(assignment.user_id)) return;
+
+    try {
+      setTogglingAssignmentId(assignment.id);
+
+      const res = await fetch(`/api/assigned-expenses/${assignment.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fulfilled: !assignment.fulfilled }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        console.error('Error updating payment status:', data.error);
+        alert(data.error || 'Failed to update payment status');
+        return;
+      }
+
+      // Reload expenses so the UI updates
+      const eRes = await fetch(
+        `/api/expenses?groupId=${encodeURIComponent(group.id)}`
+      );
+      const e = await parseJSON(eRes);
+      setExpenses(Array.isArray(e) ? e : []);
+    } catch (err) {
+      console.error('Error updating payment status:', err);
+      alert('Error updating payment status. Check console.');
+    } finally {
+      setTogglingAssignmentId(null);
     }
   };
 
@@ -206,12 +323,14 @@ export default function GroupDetailPage() {
           </Typography>
         </Box>
 
-        <Button
-          className={styles.createButton}
-          onClick={openCreateExpense}
-        >
-          Add Expense
-        </Button>
+        {canManageExpenses && (
+          <Button
+            className={styles.createButton}
+            onClick={openCreateExpense}
+          >
+            Add Expense
+          </Button>
+        )}
       </Stack>
 
       {/* Members */}
@@ -220,27 +339,50 @@ export default function GroupDetailPage() {
       </Typography>
 
       <List className={styles.memberList}>
-        {group.members.map((m, idx) => (
-          <div key={m.user_id}>
-            <ListItem className={styles.memberRow}>
-              <Box className={styles.memberInfo}>
-                <Typography className={styles.memberName}>
-                  {m.full_name}
-                </Typography>
-                <Typography className={styles.memberMeta}>
-                  {m.role} ({m.status})
-                </Typography>
-              </Box>
-            </ListItem>
-            {idx < group.members.length - 1 && (
-              <Divider className={styles.memberDivider} />
-            )}
-          </div>
-        ))}
+        {group.members.map((m, idx) => {
+          const isSelf = m.user_id === group.currentUserId;
+          const canPromote =
+            isAdmin &&
+            m.role === 'MEMBER' &&
+            m.status === 'ACCEPTED' &&
+            !isSelf;
+
+          return (
+            <div key={m.user_id}>
+              <ListItem className={styles.memberRow}>
+                <Box className={styles.memberInfo}>
+                  <Typography className={styles.memberName}>
+                    {m.full_name}
+                  </Typography>
+                  <Typography className={styles.memberMeta}>
+                    {m.role} ({m.status})
+                  </Typography>
+                </Box>
+
+                {canPromote && (
+                  <Button
+                    size="small"
+                    onClick={() => handlePromoteToModerator(m)}
+                    className={styles.memberActionButton}
+                  >
+                    Promote to moderator
+                  </Button>
+                )}
+              </ListItem>
+              {idx < group.members.length - 1 && (
+                <Divider className={styles.memberDivider} />
+              )}
+            </div>
+          );
+        })}
       </List>
 
       {/* Expenses */}
-      <Typography variant="h6" className={styles.sectionTitle} style={{ marginTop: '2rem' }}>
+      <Typography
+        variant="h6"
+        className={styles.sectionTitle}
+        style={{ marginTop: '2rem' }}
+      >
         Expenses
       </Typography>
 
@@ -280,7 +422,7 @@ export default function GroupDetailPage() {
                     <Typography className={styles.expenseAmount}>
                       {Number(expense.amount).toFixed(2)} {group.base_currency}
                     </Typography>
-                    {isAdmin && (
+                    {canManageExpenses && (
                       <Button
                         size="small"
                         onClick={() => openEditExpense(expense)}
@@ -299,28 +441,53 @@ export default function GroupDetailPage() {
                       Split between:
                     </Typography>
                     <List dense className={styles.splitList}>
-                      {expense.assigned.map((ae) => (
-                        <ListItem key={ae.id} className={styles.splitRow}>
-                          <Typography className={styles.splitName}>
-                            {memberNameFor(ae.user_id)}
-                          </Typography>
-                          <Typography className={styles.splitValue}>
-                            {[
-                              ae.amount != null
-                                ? `$${Number(ae.amount).toFixed(2)}`
-                                : null,
-                              ae.percent != null
-                                ? `${Number(ae.percent).toFixed(2)}%`
-                                : null,
-                              ae.ratio_part != null
-                                ? `ratio ${Number(ae.ratio_part)}`
-                                : null,
-                            ]
-                              .filter(Boolean)
-                              .join(' • ') || '-'}
-                          </Typography>
-                        </ListItem>
-                      ))}
+                      {expense.assigned.map((ae) => {
+                        const canToggle = canToggleAssignment(ae.user_id);
+                        const loading = togglingAssignmentId === ae.id;
+
+                        return (
+                          <ListItem key={ae.id} className={styles.splitRow}>
+                            {/* Checkbox */}
+                            <Checkbox
+                              size="small"
+                              checked={!!ae.fulfilled}
+                              onChange={() => handleToggleAssignedFulfilled(expense.id, ae)}
+                              disabled={!canToggle || loading}
+                              className={styles.splitCheckbox}
+                            />
+
+                            {/* Name + amount, spread apart */}
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                flex: 1,
+                                gap: '1rem',
+                              }}
+                            >
+                              <Typography className={styles.splitName}>
+                                {memberNameFor(ae.user_id)}
+                              </Typography>
+                              <Typography className={styles.splitValue}>
+                                {[
+                                  ae.amount != null
+                                    ? `$${Number(ae.amount).toFixed(2)}`
+                                    : null,
+                                  ae.percent != null
+                                    ? `${Number(ae.percent).toFixed(2)}%`
+                                    : null,
+                                  ae.ratio_part != null
+                                    ? `ratio ${Number(ae.ratio_part)}`
+                                    : null,
+                                ]
+                                  .filter(Boolean)
+                                  .join(' • ') || '-'}
+                              </Typography>
+                            </Box>
+                          </ListItem>
+                        );
+                      })}
                     </List>
                   </Box>
                 )}
@@ -329,6 +496,40 @@ export default function GroupDetailPage() {
           ))}
         </Stack>
       )}
+
+      {/* Promote-to-moderator confirmation dialog */}
+      <Dialog
+        open={promoteDialogOpen}
+        onClose={closePromoteDialog}
+        fullWidth
+        maxWidth="xs"
+        slotProps={{ paper: { className: styles.confirmDialogPaper } }}
+      >
+        <DialogTitle className={styles.confirmDialogTitle}>
+          Promote to moderator
+        </DialogTitle>
+        <DialogContent className={styles.confirmDialogContent}>
+          <Typography>
+            {memberToPromote
+              ? `Promote ${memberToPromote.full_name} to moderator?`
+              : ''}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={closePromoteDialog}
+            className={styles.confirmDialogButtonSecondary}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmPromoteToModerator}
+            className={styles.confirmDialogButtonPrimary}
+          >
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Reused dialog for both create + edit */}
       <AddExpenseDialog

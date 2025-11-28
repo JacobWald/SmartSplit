@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createSSRClientFromRequest } from '../../../lib/supabaseSSR.js'
 import { supabaseServer } from '../../../lib/supabaseServer.js'
 
+// Create a new group
 export async function POST(request) {
   try {
     const { supabase, response } = createSSRClientFromRequest(request)
@@ -37,6 +38,7 @@ export async function POST(request) {
   }
 }
 
+// Get groups for the current user (or a specific group if ?groupId=... is provided)
 export async function GET(request) {
   try {
     const { supabase, response } = createSSRClientFromRequest(request)

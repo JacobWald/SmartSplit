@@ -53,6 +53,9 @@
 
 .memberRow {
   padding: 0.6rem 1.5rem !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
 }
 
 .memberInfo {
@@ -76,6 +79,22 @@
 .memberDivider {
   margin: 0 1.5rem;
   border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+.memberActionButton {
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 4px 10px !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+  transition: background-color 0.2s ease-in-out !important;
+}
+
+.memberActionButton:hover {
+  background-color: var(--color-secondary) !important;
+  color: var(--color-primary) !important;
 }
 
 /* ===== EXPENSES ===== */
@@ -114,7 +133,7 @@
 }
 
 .expenseAmountBox {
-  text-align: right;
+  text-align: right !important;
 }
 
 .expenseAmount {
@@ -162,8 +181,8 @@
 
 .splitRow {
   padding: 2px 0 !important;
-  display: flex;
-  justify-content: space-between;
+  display: flex !important;;
+  justify-content: space-between !important;
   gap: 1rem;
 }
 
@@ -176,4 +195,67 @@
   font-size: 0.9rem;
   color: var(--color-primary);                  
   font-weight: 500;
+}
+
+.splitCheckbox {
+  padding: 0 4px !important;
+}
+
+/* ===== CHECKBOXES ===== */
+.splitRow :global(.MuiCheckbox-root) {
+  color: var(--color-primary) !important; 
+}
+
+.splitRow :global(.MuiCheckbox-root.Mui-checked) {
+  color: var(--color-primary) !important; /* checked square */
+}
+
+.splitRow :global(.MuiCheckbox-root:hover) {
+  background-color: rgba(255,255,255,0.12) !important;
+  border-radius: 4px;
+}
+
+.confirmDialogPaper {
+  background-color: var(--color-primary) !important;
+  color: var(--color-tertiary) !important;
+  border-radius: 14px !important;
+  padding: 1.25rem 1.5rem;
+}
+
+.confirmDialogTitle {
+  font-weight: 600;
+  color: var(--color-tertiary);
+}
+
+.confirmDialogContent {
+  margin-top: 0.25rem;
+  color: var(--color-tertiary);
+}
+
+.confirmDialogButtonPrimary {
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  border-radius: 999px !important;
+  padding: 0.3rem 1.1rem !important;
+}
+
+.confirmDialogButtonPrimary:hover {
+  background-color: var(--color-tertiary) !important;
+  color: var(--color-primary) !important;
+}
+
+.confirmDialogButtonSecondary {
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  border-radius: 999px !important;
+  padding: 0.3rem 1.1rem !important;
+}
+
+.confirmDialogButtonSecondary:hover {
+  background-color: var(--color-tertiary) !important;
+  color: var(--color-primary) !important;
 }

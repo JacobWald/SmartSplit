@@ -3,16 +3,12 @@ import { NextResponse } from 'next/server';
 import { createSSRClientFromRequest } from '@/lib/supabaseSSR';
 import { supabaseServer } from '@/lib/supabaseServer';
 
-export async function PUT(request) {
+// Update an existing expense
+export async function PUT(request, context) {
   try {
     const { supabase, response } = createSSRClientFromRequest(request);
 
-    // Derive the expense id from the URL path
-    const pathname = request.nextUrl?.pathname || '';
-    const segments = pathname.split('/').filter(Boolean);
-    const id = segments[segments.length - 1]; // last piece is the id
-
-    console.log('PUT /api/expenses/[id] pathname =', pathname, 'derived id =', id);
+    const { id } = await context.params;
 
     // Auth check
     const { data: userData, error: userErr } = await supabase.auth.getUser();
