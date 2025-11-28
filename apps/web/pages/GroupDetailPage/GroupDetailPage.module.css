@@ -220,6 +220,11 @@
   color: var(--color-primary) !important;
 }
 
+.noExpensesText {
+  color: var(--color-primary);
+  justify-content: center;
+}
+
 /* Split breakdown */
 
 .splitBox {

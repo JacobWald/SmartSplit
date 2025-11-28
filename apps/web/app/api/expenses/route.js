@@ -53,8 +53,6 @@ export async function GET(request) {
             id,
             user_id,
             amount,
-            percent,
-            ratio_part,
             created_at,
             fulfilled
           )
@@ -83,8 +81,6 @@ export async function GET(request) {
         expense_id,
         user_id,
         amount,
-        percent,
-        ratio_part,
         created_at,
         fulfilled
       `,
@@ -132,8 +128,6 @@ export async function GET(request) {
         id: a.id,
         user_id: a.user_id,
         amount: a.amount,
-        percent: a.percent,
-        ratio_part: a.ratio_part,
         created_at: a.created_at,
         fulfilled: a.fulfilled,
       });

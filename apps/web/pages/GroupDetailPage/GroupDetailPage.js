@@ -452,7 +452,7 @@ export default function GroupDetailPage() {
       </Box>
 
       {filteredExpenses.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" className={styles.noExpensesText}>
           {expenseFilter === 'fulfilled'
             ? 'No fulfilled expenses yet.'
             : 'No outstanding expenses 🎉'}
