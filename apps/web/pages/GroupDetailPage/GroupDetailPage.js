@@ -403,9 +403,20 @@ export default function GroupDetailPage() {
                   className={styles.expenseHeader}
                 >
                   <Box>
-                    <Typography className={styles.expenseTitle}>
-                      {expense.title}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Typography className={styles.expenseTitle}>
+                        {expense.title}
+                      </Typography>
+                      <span
+                        className={`${styles.expenseStatusPill} ${
+                          expense.fulfilled
+                            ? styles.expenseStatusPillFulfilled
+                            : styles.expenseStatusPillUnfulfilled
+                        }`}
+                      >
+                        {expense.fulfilled ? 'Fulfilled' : 'Outstanding'}
+                      </span>
+                    </Box>
                     {expense.occurred_at && (
                       <Typography className={styles.expenseDate}>
                         {formatDate(expense.occurred_at)}
