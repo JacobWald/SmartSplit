@@ -12,6 +12,7 @@ import {
   Alert,
   CircularProgress,
   Autocomplete,
+  Fade,
 } from "@mui/material";
 
 // Input styling (matches rest of app)
@@ -50,6 +51,17 @@ export default function ProfilePage() {
   // Auth / profile state
   const [userId, setUserId] = useState(null);
   const [email, setEmail] = useState("");
+
+  // Automatically clear success messages after a few seconds
+  useEffect(() => {
+    if (!infoMsg) return;
+
+    const timer = setTimeout(() => {
+      setInfoMsg("");
+    }, 4000); // 4 seconds
+
+    return () => clearTimeout(timer);
+  }, [infoMsg]);
 
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState(""); // username shown under full name
@@ -514,15 +526,42 @@ export default function ProfilePage() {
       }}
     >
       {errorMsg && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert
+          severity="error"
+          sx={{
+            mb: 2,
+            maxWidth: 420,
+            mx: "auto",
+          }}
+        >
           {errorMsg}
         </Alert>
       )}
-      {infoMsg && (
-        <Alert severity="success" sx={{ mb: 2 }}>
-          {infoMsg}
-        </Alert>
-      )}
+
+      <Fade in={Boolean(infoMsg)} timeout={500}>
+        <Box
+          sx={{
+            display: infoMsg ? "flex" : "none",
+            justifyContent: "center",
+            mb: 2,
+          }}
+        >
+          <Alert
+            severity="success"
+            sx={{
+              maxWidth: 420,
+              width: "100%",
+              bgcolor: "var(--color-tertiary)",
+              color: "var(--color-primary)",
+              border: "1px solid var(--color-primary)",
+              boxShadow: 2,
+              fontWeight: 500,
+            }}
+          >
+            {infoMsg}
+          </Alert>
+        </Box>
+      </Fade>
 
       {/* Two side-by-side cards on desktop, stacked on mobile */}
       <Box
