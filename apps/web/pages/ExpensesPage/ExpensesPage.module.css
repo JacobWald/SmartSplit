@@ -8,71 +8,55 @@
   font-family: 'Inter', system-ui, sans-serif;
 }
 
-.container h1 {
-  text-align: center;
-  color: #333;
+.loadingBox {
+  display: flex;
+  justify-content: center;
+  margin-top: 100px;
+}
+
+.pageTitle {
+  font-weight: 700;
   margin-bottom: 20px;
 }
 
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-bottom: 25px;
+.card {
+  border-radius: 10px;
 }
 
-.form input {
-  padding: 10px 12px;
-  font-size: 16px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.form input:focus {
-  border-color: #3b82f6;
-  outline: none;
-  box-shadow: 0 0 4px rgba(59, 130, 246, 0.3);
-}
-
-.form button {
-  background-color: #3b82f6;
-  color: white;
+.expenseTitle {
+  font-size: 20px;
   font-weight: 600;
-  border: none;
-  border-radius: 6px;
-  padding: 10px 16px;
-  cursor: pointer;
-  transition: all 0.3s ease;
 }
 
-.form button:hover {
-  background-color: #2563eb;
+.groupLabel {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #444;
 }
 
-.expenseList {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
+.viewGroupButton {
+  margin-top: 14px;
+  background-color: #2563eb !important;
 }
 
-.expenseList li {
-  background: #fff;
-  border: 1px solid #e5e7eb;
+/* --------------------- */
+/* SPLIT BETWEEN section */
+/* --------------------- */
+.splitBox {
+  background: #faf6e8;
+  padding: 12px;
   border-radius: 8px;
-  margin-bottom: 10px;
-  padding: 12px 15px;
+  margin-top: 14px;
+  border: 1px solid #e2d8b8;
+}
+
+.splitTitle {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.splitRow {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  font-size: 15px;
-  color: #111827;
-}
-
-.expenseList li strong {
-  color: #2563eb;
-}
-
-.expenseList li:hover {
-  background-color: #f3f4f6;
+  padding: 4px 0;
 }

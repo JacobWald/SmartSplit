@@ -73,7 +73,7 @@ export default function ExpensesSection({
     setExpenseOpen(true);
   };
 
-  const handleExpenseSubmit = async ({ title, amount, assigned }) => {
+  const handleExpenseSubmit = async ({ title, amount, assigned, note }) => {
     if (!group?.id || !currentUserId) {
       console.error('Missing group id or current user id');
       return;
@@ -85,7 +85,7 @@ export default function ExpensesSection({
       const isEdit = !!editingExpense;
       const endpoint = isEdit
         ? `/api/expenses/${editingExpense.id}`
-        : '/api/expenses/create';
+        : '/api/expenses';
       const method = isEdit ? 'PUT' : 'POST';
 
       const res = await fetch(endpoint, {
@@ -97,6 +97,7 @@ export default function ExpensesSection({
           group_id: group.id,
           payer_id: currentUserId,
           assigned,
+          note,
         }),
       });
 

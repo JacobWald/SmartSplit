@@ -2,148 +2,211 @@
 
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { useSearchParams } from "next/navigation";
+import {
+  Box,
+  Typography,
+  CircularProgress,
+  Card,
+  CardContent,
+  Button,
+  Stack,
+} from "@mui/material";
+import Link from "next/link";
 import styles from "./ExpensesPage.module.css";
 
 export default function ExpensesPage() {
-  const searchParams = useSearchParams();
-  const groupId = searchParams.get("group_id");
-
   const [expenses, setExpenses] = useState([]);
-  const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState("");
   const [profileId, setProfileId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingError, setLoadingError] = useState(null);
 
-  // ---------------------------
-  // 1. Fetch current user profile
-  // ---------------------------
+  // -----------------------------------------
+  // Load current logged-in User ID
+  // -----------------------------------------
   useEffect(() => {
     async function loadProfile() {
-      const { data: userData, error: userErr } = await supabase.auth.getUser();
-      if (userErr || !userData?.user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", userData.user.id)
-        .single();
-
-      if (profile) {
-        setProfileId(profile.id);
+      const { data: userData, error } = await supabase.auth.getUser();
+      if (error || !userData?.user) {
+        setLoadingError("Unable to load user.");
+        return;
       }
+      setProfileId(userData.user.id);
     }
-
     loadProfile();
   }, []);
 
-  // ---------------------------
-  // 2. Fetch expenses for the group
-  // ---------------------------
+  // -----------------------------------------
+  // Load ALL expenses for logged-in user
+  // -----------------------------------------
   useEffect(() => {
-    if (!groupId) return;
+    if (!profileId) return;
 
-    async function fetchExpenses() {
-      const { data, error } = await supabase
-        .from("expenses")
-        .select("*")
-        .eq("group_id", groupId)
-        .order("created_at", { ascending: false });
+    async function loadExpenses() {
+      setLoading(true);
 
-      if (error) {
-        console.error("Error fetching expenses:", error.message);
-      } else {
-        setExpenses(data || []);
+      // A. Find all assigned expenses for this user
+      const { data: myAssigned, error: assignErr } = await supabase
+        .from("assigned_expenses")
+        .select("expense_id, amount")
+        .eq("user_id", profileId);
+
+      if (assignErr) {
+        console.error("Error loading assigned_expenses:", assignErr);
+        setLoadingError(assignErr.message);
+        setLoading(false);
+        return;
       }
+
+      const assignedIds = myAssigned.map((a) => a.expense_id);
+
+      // B. Fetch expenses where:
+      //  - user is the payer
+      //  - OR expense appears in assigned_expenses
+      const { data: expensesData, error: expensesErr } = await supabase
+        .from("expenses")
+        .select("*, groups(name)")
+        .or(
+          `payer_id.eq.${profileId}${
+            assignedIds.length ? `,id.in.(${assignedIds.join(",")})` : ""
+          }`
+        )
+        .order("occurred_at", { ascending: false });
+
+      if (expensesErr) {
+        console.error(expensesErr);
+        setLoadingError(expensesErr.message);
+        setLoading(false);
+        return;
+      }
+
+      // C. Attach user's assigned amount
+      const enriched = expensesData.map((exp) => {
+        const match = myAssigned.find((a) => a.expense_id === exp.id);
+        return {
+          ...exp,
+          assigned_amount: match ? match.amount : null,
+        };
+      });
+
+      // ---------------------------------------------
+      // D. Load SPLIT DETAILS for each expense
+      // ---------------------------------------------
+      const enrichedWithSplits = [];
+
+      for (const exp of enriched) {
+        const { data: assignedRows } = await supabase
+          .from("assigned_expenses")
+          .select("user_id, amount, profiles(full_name)")
+          .eq("expense_id", exp.id);
+
+        enrichedWithSplits.push({
+          ...exp,
+          assigned_split: assignedRows || [],
+        });
+      }
+
+      setExpenses(enrichedWithSplits);
+      setLoading(false);
     }
 
-    fetchExpenses();
-  }, [groupId]);
+    loadExpenses();
+  }, [profileId]);
 
-  // ---------------------------
-  // 3. Add a new expense
-  // ---------------------------
-  const handleAddExpense = async (e) => {
-    e.preventDefault();
+  // -----------------------------------------
+  // LOADING
+  // -----------------------------------------
+  if (loading)
+    return (
+      <Box className={styles.loadingBox}>
+        <CircularProgress />
+      </Box>
+    );
 
-    if (!groupId) {
-      alert("Missing group ID in URL.");
-      return;
-    }
+  if (loadingError)
+    return (
+      <Box className={styles.container}>
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          My Expenses
+        </Typography>
+        <Typography color="error">{loadingError}</Typography>
+      </Box>
+    );
 
-    if (!profileId) {
-      alert("Profile not loaded yet. Try again in a second.");
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("expenses")
-      .insert([
-        {
-          title,
-          amount: parseFloat(amount),
-          group_id: groupId,
-          payer_id: profileId,
-          currency: "USD",
-          occurred_at: new Date(),
-          qty: 1,
-          unit_price: parseFloat(amount),
-        },
-      ])
-      .select("*"); // <-- CRITICAL FIX (returns inserted row)
-
-    if (error) {
-      console.error("❌ Error adding expense:", error.message);
-      alert(error.message);
-      return;
-    }
-
-    // Safely append
-    if (data && data.length > 0) {
-      setExpenses([data[0], ...expenses]);
-    }
-
-    setTitle("");
-    setAmount("");
-  };
-
-  // ---------------------------
-  // 4. UI
-  // ---------------------------
+  // -----------------------------------------
+  // MAIN UI
+  // -----------------------------------------
   return (
-    <div className={styles.container}>
-      <h1>💰 Group Expenses</h1>
+    <Box className={styles.container}>
+      <Typography variant="h4" className={styles.pageTitle}>
+        My Expenses
+      </Typography>
 
-      <form onSubmit={handleAddExpense} className={styles.form}>
-        <input
-          type="text"
-          placeholder="Expense title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-        />
+      {expenses.length === 0 ? (
+        <Typography>No expenses to display.</Typography>
+      ) : (
+        <Stack spacing={2}>
+          {expenses.map((exp) => (
+            <Card key={exp.id} className={styles.card}>
+              <CardContent>
+                <Typography variant="h6" className={styles.expenseTitle}>
+                  {exp.title}
+                </Typography>
 
-        <input
-          type="number"
-          placeholder="Amount"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          required
-        />
+                <Typography className={styles.groupLabel}>
+                  Group:{" "}
+                  <strong>{exp.groups?.name || "Unknown Group"}</strong>
+                </Typography>
 
-        <button type="submit">Add Expense</button>
-      </form>
+                <Typography>
+                  Total Amount: <strong>${exp.amount}</strong>
+                </Typography>
 
-      <ul className={styles.expenseList}>
-        {expenses.map((exp) => (
-          <li key={exp.id}>
-            <strong>{exp.title}</strong> — ${exp.amount}
-            <br />
-            <small>
-              Group: {exp.group_id} | Payer: {exp.payer_id}
-            </small>
-          </li>
-        ))}
-      </ul>
-    </div>
+                {exp.assigned_amount && (
+                  <Typography>
+                    Your Share: <strong>${exp.assigned_amount}</strong>
+                  </Typography>
+                )}
+
+                {exp.note && (
+                  <Typography sx={{ mt: 1 }}>
+                    <strong>Note:</strong> {exp.note}
+                  </Typography>
+                )}
+
+                <Typography sx={{ mt: 1 }}>
+                  Date: {new Date(exp.occurred_at).toLocaleDateString()}
+                </Typography>
+
+                {/* SPLIT DETAILS */}
+                {exp.assigned_split?.length > 0 && (
+                  <Box className={styles.splitBox}>
+                    <Typography className={styles.splitTitle}>
+                      SPLIT BETWEEN:
+                    </Typography>
+
+                    {exp.assigned_split.map((s) => (
+                      <Box key={s.user_id} className={styles.splitRow}>
+                        <span>{s.profiles?.full_name || "Unknown User"}</span>
+                        <strong>${Number(s.amount).toFixed(2)}</strong>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+
+                {/* VIEW GROUP BUTTON */}
+                <Button
+                  variant="contained"
+                  className={styles.viewGroupButton}
+                  component={Link}
+                  href={`/groups/${exp.group_id}`}
+                >
+                  View Group
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </Stack>
+      )}
+    </Box>
   );
 }

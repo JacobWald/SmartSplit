@@ -1,5 +1,6 @@
-'use client';
+"use client";
 
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -7,186 +8,176 @@ import {
   DialogActions,
   Button,
   TextField,
-  FormControlLabel,
-  Radio,
-  RadioGroup,
   Checkbox,
-  Typography,
+  FormControlLabel,
+  RadioGroup,
+  Radio,
   Stack,
-  Box,
-} from '@mui/material';
-import { useEffect, useState } from 'react';
-import styles from './AddExpenseDialog.module.css';
+} from "@mui/material";
+import styles from "./AddExpenseDialog.module.css";
 
 export default function AddExpenseDialog({
   open,
   onClose,
-  members,
+  members = [],
   onSubmit,
-  loading,
-  groupName,
-  mode = 'create',   // 'create' or 'edit'
-  expense = null,    // when editing
+  loading = false,
+  groupName = "",
+  mode = "create",           // 🔥 NEW
+  expense = null,            // 🔥 NEW
 }) {
-  const [title, setTitle] = useState('');
-  const [amount, setAmount] = useState('');
-  const [splitMethod, setSplitMethod] = useState('equal'); // 'equal' | 'custom'
+  const isEdit = mode === "edit";
+
+  const [title, setTitle] = useState("");
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [splitMethod, setSplitMethod] = useState("equal");
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [customAmounts, setCustomAmounts] = useState({});
+  const [error, setError] = useState("");
 
-  // Initialize when dialog opens / mode changes / expense changes
+  const acceptedMembers = members.filter((m) => m.status === "ACCEPTED");
+
+  // ----------------------------------------------------
+  // LOAD EXISTING DATA WHEN EDITING
+  // ----------------------------------------------------
   useEffect(() => {
-    if (!open) return;
+    if (!open) return; // only load when dialog opens
 
-    if (mode === 'edit' && expense) {
-      setTitle(expense.title ?? '');
-      setAmount(
-        expense.amount !== undefined && expense.amount !== null
-          ? String(expense.amount)
-          : ''
-      );
+    if (isEdit && expense) {
+      setTitle(expense.title);
+      setAmount(String(expense.amount));
+      setNote(expense.note || "");
 
-      const assigned = Array.isArray(expense.assigned)
-        ? expense.assigned
-        : [];
+      const assigned = expense.assigned || [];
+
+      // Determine split method
+      const hasCustom = assigned.some((a) => a.amount !== null);
+      setSplitMethod(hasCustom ? "custom" : "equal");
 
       const memberIds = assigned.map((a) => a.user_id);
       setSelectedMembers(memberIds);
 
-      if (assigned.length > 0) {
-        const base = Number(assigned[0].amount ?? 0);
-        const allEqual = assigned.every(
-          (a) => Number(a.amount ?? 0) === base
-        );
-        const totalAssigned = assigned.reduce(
-          (sum, a) => sum + Number(a.amount ?? 0),
-          0
-        );
-        const total = Number(expense.amount ?? 0);
-
-        if (
-          allEqual &&
-          Math.abs(totalAssigned - total) < 0.05 &&
-          memberIds.length > 0
-        ) {
-          setSplitMethod('equal');
-          setCustomAmounts({});
-        } else {
-          setSplitMethod('custom');
-          const initialCustom = {};
-          for (const a of assigned) {
-            if (a.user_id) {
-              initialCustom[a.user_id] =
-                a.amount !== undefined && a.amount !== null
-                  ? String(a.amount)
-                  : '';
-            }
-          }
-          setCustomAmounts(initialCustom);
-        }
-      } else {
-        setSplitMethod('equal');
-        setCustomAmounts({});
-      }
+      const amountsMap = {};
+      assigned.forEach((a) => {
+        amountsMap[a.user_id] =
+          a.amount !== null ? String(a.amount) : "";
+      });
+      setCustomAmounts(amountsMap);
     } else {
-      // create mode: reset
-      setTitle('');
-      setAmount('');
-      setSplitMethod('equal');
-      setSelectedMembers([]);
+      // Reset for CREATE
+      setTitle("");
+      setAmount("");
+      setNote("");
+      setSplitMethod("equal");
+      setSelectedMembers(acceptedMembers.map((m) => m.user_id));
       setCustomAmounts({});
     }
-  }, [open, mode, expense]);
+  }, [open, isEdit, expense, members]);
 
-  const handleMemberToggle = (user_id) => {
-    if (selectedMembers.includes(user_id)) {
-      setSelectedMembers(selectedMembers.filter((id) => id !== user_id));
+  const handleToggleMember = (id) => {
+    if (selectedMembers.includes(id)) {
+      setSelectedMembers(selectedMembers.filter((m) => m !== id));
     } else {
-      setSelectedMembers([...selectedMembers, user_id]);
+      setSelectedMembers([...selectedMembers, id]);
     }
   };
 
-  const handleCustomAmountChange = (user_id, value) => {
-    setCustomAmounts((prev) => ({
-      ...prev,
-      [user_id]: value,
-    }));
+  const handleCustomAmountChange = (userId, val) => {
+    setCustomAmounts({
+      ...customAmounts,
+      [userId]: val,
+    });
   };
 
+  // ----------------------------------------------------
+  // SAVE (Create or Edit)
+  // ----------------------------------------------------
   const handleSave = () => {
-    if (!title.trim() || !amount.trim()) {
-      alert('Title and amount are required.');
-      return;
-    }
-    if (selectedMembers.length === 0) {
-      alert('Select at least one member.');
-      return;
-    }
+    setError("");
 
-    const total = parseFloat(amount);
-    if (Number.isNaN(total) || total <= 0) {
-      alert('Amount must be a positive number.');
-      return;
-    }
+    if (!title.trim()) return setError("Title is required");
+    if (!amount || Number(amount) <= 0)
+      return setError("Amount must be greater than 0");
 
-    let assigned = [];
+    if (selectedMembers.length === 0)
+      return setError("Select at least one member");
 
-    if (splitMethod === 'equal') {
-      const split = total / selectedMembers.length;
-      const each = Number(split.toFixed(2));
+    const total = Number(amount);
 
-      assigned = selectedMembers.map((uid) => ({
-        user_id: uid,
-        amount: each,
-      }));
-    } else {
-      assigned = selectedMembers.map((uid) => ({
-        user_id: uid,
-        amount: parseFloat(customAmounts[uid] || '0'),
-      }));
+    // Custom split must sum correctly
+    if (splitMethod === "custom") {
+      let sum = 0;
+      selectedMembers.forEach((id) => {
+        const val = parseFloat(customAmounts[id] || 0);
+        sum += isNaN(val) ? 0 : val;
+      });
+
+      if (Math.round(sum * 100) !== Math.round(total * 100)) {
+        return setError(
+          "Custom amounts must add up exactly to the total."
+        );
+      }
     }
 
-    onSubmit({
+    // ---------------------- PAYLOAD ----------------------
+    const payload = {
+      mode,
+      id: isEdit ? expense.id : undefined,
       title,
       amount: total,
-      assigned,
-    });
+      note,
+      assigned: selectedMembers.map((uid) => ({
+        user_id: uid,
+        amount:
+          splitMethod === "custom"
+            ? Number(customAmounts[uid] || 0)
+            : Number(total / selectedMembers.length),
+      })),
+    };
+
+    onSubmit(payload);
   };
 
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={() => (!loading ? onClose() : null)}
       fullWidth
       maxWidth="sm"
-      slotProps={{ paper: { className: styles.dialogPaper } }}
+      classes={{ paper: styles.dialogPaper }}
     >
       <DialogTitle className={styles.dialogTitle}>
-        {mode === 'edit' ? 'Edit Expense' : 'Add Expense'} for {groupName}
+        {isEdit ? "Edit Expense" : `Add Expense for ${groupName}`}
       </DialogTitle>
 
       <DialogContent className={styles.dialogContent}>
-        <Stack spacing={2} sx={{ mt: 1 }}>
+        <Stack spacing={2}>
           <TextField
             label="Title *"
-            fullWidth
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className={styles.inputs}
+            fullWidth
           />
 
           <TextField
             label="Amount *"
-            fullWidth
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className={styles.inputs}
+            fullWidth
           />
 
-          <Typography sx={{ mt: 2 }} className={styles.splitMethodLabel}>
-            Split method
-          </Typography>
+          <TextField
+            label="Note (optional)"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            fullWidth
+            multiline
+            minRows={2}
+          />
+
+          <div className={styles.splitMethodLabel}>Split method</div>
 
           <RadioGroup
             row
@@ -205,55 +196,60 @@ export default function AddExpenseDialog({
             />
           </RadioGroup>
 
-          <Typography sx={{ mt: 2 }} className={styles.splitMethodLabel}>
-            Members responsible
-          </Typography>
-          <Typography className={styles.helperText}>
-            Select who is included in this expense and (optionally) adjust custom amounts.
-          </Typography>
+          <div className={styles.splitMethodLabel}>Members responsible</div>
 
-          {members.map((m) => (
-            <Box key={m.user_id} className={styles.memberRow}>
-              <Checkbox
-                checked={selectedMembers.includes(m.user_id)}
-                onChange={() => handleMemberToggle(m.user_id)}
+          <p className={styles.helperText}>
+            Select members included in this expense.
+            {splitMethod === "custom"
+              ? " Enter individual amounts below."
+              : ""}
+          </p>
+
+          {acceptedMembers.map((m) => (
+            <div key={m.user_id} className={styles.memberRow}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={selectedMembers.includes(m.user_id)}
+                    onChange={() => handleToggleMember(m.user_id)}
+                  />
+                }
+                label={`${m.full_name} — ${m.status}`}
               />
-              <Typography className={styles.memberLabel}>
-                {m.full_name} — {m.status}
-              </Typography>
 
-              {splitMethod === 'custom' &&
+              {splitMethod === "custom" &&
                 selectedMembers.includes(m.user_id) && (
                   <TextField
                     type="number"
-                    size="small"
-                    className={`${styles.inputs} ${styles.customAmountField}`}
                     placeholder="Amount"
-                    value={customAmounts[m.user_id] || ''}
+                    className={styles.customAmountField}
+                    value={customAmounts[m.user_id] || ""}
                     onChange={(e) =>
-                      handleCustomAmountChange(m.user_id, e.target.value)
+                      handleCustomAmountChange(
+                        m.user_id,
+                        e.target.value
+                      )
                     }
                   />
                 )}
-            </Box>
+            </div>
           ))}
+
+          {error && (
+            <p style={{ color: "red", fontWeight: 600 }}>
+              {error}
+            </p>
+          )}
         </Stack>
       </DialogContent>
 
       <DialogActions>
-        <Button
-          onClick={onClose}
-          disabled={loading}
-          className={styles.dialogButton}
-        >
+        <Button onClick={onClose} disabled={loading}>
           Cancel
         </Button>
-        <Button
-          onClick={handleSave}
-          disabled={loading}
-          className={styles.dialogButton}
-        >
-          {mode === 'edit' ? 'Save Changes' : 'Save Expense'}
+
+        <Button onClick={handleSave} disabled={loading}>
+          {isEdit ? "Save Changes" : "Save Expense"}
         </Button>
       </DialogActions>
     </Dialog>

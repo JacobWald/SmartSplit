@@ -7,8 +7,26 @@ import styles from './GroupDetailPage.module.css';
 import GroupMembersSection from './MembersSection';
 import ExpensesSection from './ExpensesSection';
 
+/* ------------------------------------------------------
+   Helper: Convert slug to the real group UUID
+   ------------------------------------------------------ */
+const decodeSlug = (value) => {
+  if (!value) return null;
+
+  // If slug IS a UUID → use it directly
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(value)) return value;
+
+  // Otherwise: NOT supported for now (only UUID slugs allowed)
+  console.warn('Slug is not a UUID — ignoring:', value);
+  return null;
+};
+
 export default function GroupDetailPage() {
-  const { slug } = useParams(); // group id (UUID)
+  const { slug } = useParams();
+
+  // Convert slug to ID
+  const groupId = decodeSlug(slug);
 
   const [group, setGroup] = useState(null);
   const [expenses, setExpenses] = useState([]);
@@ -23,9 +41,15 @@ export default function GroupDetailPage() {
     return text ? JSON.parse(text) : null;
   };
 
-  // Fetch group + expenses + current user on mount / slug change
+  /* ------------------------------------------------------
+     Load group + expenses + current user
+     ------------------------------------------------------ */
   useEffect(() => {
-    if (!slug) return;
+    if (!groupId) {
+      setLoading(false);
+      setError('Invalid group ID.');
+      return;
+    }
 
     (async () => {
       try {
@@ -33,8 +57,8 @@ export default function GroupDetailPage() {
         setError('');
 
         const [gRes, eRes, meRes] = await Promise.all([
-          fetch(`/api/groups?groupId=${encodeURIComponent(slug)}`),
-          fetch(`/api/expenses?groupId=${encodeURIComponent(slug)}`),
+          fetch(`/api/groups?groupId=${encodeURIComponent(groupId)}`),
+          fetch(`/api/expenses?groupId=${encodeURIComponent(groupId)}`),
           fetch('/api/auth/me'),
         ]);
 
@@ -65,9 +89,11 @@ export default function GroupDetailPage() {
         setLoading(false);
       }
     })();
-  }, [slug]);
+  }, [groupId]);
 
-  // Load friend profiles for the "Add members" dialog
+  /* ------------------------------------------------------
+     Load friend profiles
+     ------------------------------------------------------ */
   useEffect(() => {
     if (!group?.currentUserId) {
       setFriendProfiles([]);
@@ -87,6 +113,9 @@ export default function GroupDetailPage() {
     })();
   }, [group?.currentUserId]);
 
+  /* ------------------------------------------------------
+     Role + helper utilities
+     ------------------------------------------------------ */
   const currentMember = useMemo(() => {
     if (!group?.members || !group.currentUserId) return null;
     return group.members.find((m) => m.user_id === group.currentUserId) ?? null;
@@ -95,8 +124,7 @@ export default function GroupDetailPage() {
   const currentRole = currentMember?.role ?? null;
   const isAdmin = currentRole === 'ADMIN';
   const isModerator = currentRole === 'MODERATOR';
-
-  const isReadOnly = group?.active === false; 
+  const isReadOnly = group?.active === false;
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -111,15 +139,18 @@ export default function GroupDetailPage() {
     return m?.full_name || 'Unknown user';
   };
 
+  /* ------------------------------------------------------
+     Refresh helpers
+     ------------------------------------------------------ */
   const reloadGroup = async () => {
     try {
       const gRes = await fetch(
-        `/api/groups?groupId=${encodeURIComponent(group.id)}`
+        `/api/groups?groupId=${encodeURIComponent(groupId)}`
       );
       const g = await parseJSON(gRes);
       const groupObj = Array.isArray(g) ? g[0] : g;
 
-      if (groupObj && group.currentUserId) {
+      if (groupObj && group?.currentUserId) {
         groupObj.currentUserId = group.currentUserId;
       }
 
@@ -130,10 +161,10 @@ export default function GroupDetailPage() {
   };
 
   const reloadExpenses = async () => {
-    if (!group?.id) return;
+    if (!groupId) return;
     try {
       const eRes = await fetch(
-        `/api/expenses?groupId=${encodeURIComponent(group.id)}`
+        `/api/expenses?groupId=${encodeURIComponent(groupId)}`
       );
       const e = await parseJSON(eRes);
       setExpenses(Array.isArray(e) ? e : []);
@@ -142,6 +173,9 @@ export default function GroupDetailPage() {
     }
   };
 
+  /* ------------------------------------------------------
+     UI Rendering
+     ------------------------------------------------------ */
   if (loading) {
     return (
       <Box className={styles.loadingBox}>
@@ -195,7 +229,7 @@ export default function GroupDetailPage() {
         currentUserId={group.currentUserId}
         friendProfiles={friendProfiles}
         onGroupUpdated={reloadGroup}
-        isReadOnly={isReadOnly}       
+        isReadOnly={isReadOnly}
       />
 
       {/* Expenses */}
@@ -210,7 +244,7 @@ export default function GroupDetailPage() {
         onExpensesUpdated={reloadExpenses}
         memberNameFor={memberNameFor}
         formatDate={formatDate}
-        isReadOnly={isReadOnly}      
+        isReadOnly={isReadOnly}
       />
     </Box>
   );

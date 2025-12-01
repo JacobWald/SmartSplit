@@ -7,7 +7,6 @@ import { supabaseServer } from '@/lib/supabaseServer';
 export async function PUT(request, context) {
   try {
     const { supabase, response } = createSSRClientFromRequest(request);
-
     const { id } = await context.params;
 
     // Auth check
@@ -15,25 +14,25 @@ export async function PUT(request, context) {
     if (userErr || !userData?.user) {
       return NextResponse.json(
         { error: 'Not authenticated' },
-        { status: 401, headers: response.headers },
+        { status: 401, headers: response.headers }
       );
     }
 
     if (!id) {
       return NextResponse.json(
         { error: 'Missing expense id in URL' },
-        { status: 400, headers: response.headers },
+        { status: 400, headers: response.headers }
       );
     }
 
     // Parse body
     const body = await request.json();
-    const { title, amount, assigned } = body;
+    const { title, amount, assigned, note } = body;
 
     if (!title || amount == null || !Array.isArray(assigned)) {
       return NextResponse.json(
         { error: 'Missing required fields for expense update' },
-        { status: 400, headers: response.headers },
+        { status: 400, headers: response.headers }
       );
     }
 
@@ -41,13 +40,13 @@ export async function PUT(request, context) {
     if (Number.isNaN(total) || total <= 0) {
       return NextResponse.json(
         { error: 'Amount must be a positive number' },
-        { status: 400, headers: response.headers },
+        { status: 400, headers: response.headers }
       );
     }
 
     const totalAssigned = assigned.reduce(
       (sum, a) => sum + (Number(a.amount) || 0),
-      0,
+      0
     );
 
     if (Math.abs(totalAssigned - total) > 0.05) {
@@ -56,7 +55,7 @@ export async function PUT(request, context) {
           error:
             'Assigned amounts do not match total. Please recheck your split.',
         },
-        { status: 400, headers: response.headers },
+        { status: 400, headers: response.headers }
       );
     }
 
@@ -70,18 +69,17 @@ export async function PUT(request, context) {
     if (fetchErr || !existing) {
       return NextResponse.json(
         { error: 'Expense not found' },
-        { status: 404, headers: response.headers },
+        { status: 404, headers: response.headers }
       );
     }
 
-    // Update expense row
+    // Update expense row (qty and unit_price removed)
     const { error: expErr } = await supabaseServer
       .from('expenses')
       .update({
         title,
         amount: total,
-        qty: 1,
-        unit_price: total,
+        note: note || null,
       })
       .eq('id', id);
 
@@ -105,6 +103,7 @@ export async function PUT(request, context) {
       expense_id: id,
       user_id: a.user_id,
       amount: a.amount,
+      fulfilled: false, // reset to not fulfilled on edit
     }));
 
     const { error: insErr } = await supabaseServer
@@ -118,7 +117,7 @@ export async function PUT(request, context) {
 
     return NextResponse.json(
       { success: true },
-      { status: 200, headers: response.headers },
+      { status: 200, headers: response.headers }
     );
   } catch (err) {
     console.error('PUT /api/expenses/[id] error:', err);
@@ -151,7 +150,7 @@ export async function DELETE(request, context) {
     }
     const currentUserId = userData.user.id;
 
-    // Load expense to get group_id
+    // Load expense to get group info
     const { data: expense, error: expErr } = await supabaseServer
       .from('expenses')
       .select('id, group_id')
@@ -165,7 +164,7 @@ export async function DELETE(request, context) {
       );
     }
 
-    // Check caller is ADMIN in this group
+    // Ensure caller is ADMIN
     const { data: gm, error: gmErr } = await supabaseServer
       .from('group_members')
       .select('role')
@@ -176,11 +175,11 @@ export async function DELETE(request, context) {
     if (gmErr || !gm || gm.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Only group admins can delete expenses' },
-        { status: 403, headers: response.headers }
+        { status: 403 }
       );
     }
 
-    // Delete expense (assigned_expenses will cascade-delete)
+    // Delete expense
     const { error: delErr } = await supabaseServer
       .from('expenses')
       .delete()
