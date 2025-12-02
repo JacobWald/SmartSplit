@@ -236,7 +236,16 @@ export default function ExpensesPage() {
         </button>
       </Box>
 
-      {/* EXPENSE GRID */}
+      {/* EXPENSE AREA */}
+      {filteredExpenses.length === 0 ? (
+        <Box className={styles.empty}>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            {filter === 'outstanding'
+              ? 'You have no outstanding expenses.'
+              : 'You have no paid expenses.'}
+          </Typography>
+        </Box>
+      ) : (
       <div className={styles.expenseGrid}>
         {filteredExpenses.map((exp) => (
           <Card key={exp.id} className={styles.card}>
@@ -327,6 +336,7 @@ export default function ExpensesPage() {
           </Card>
         ))}
       </div>
+      )}
     </Box>
   );
 }

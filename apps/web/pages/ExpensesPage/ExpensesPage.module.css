@@ -46,6 +46,17 @@
   box-shadow: 0 2px 6px rgba(0,0,0,0.18);
 }
 
+/* Empty message */
+.empty {
+  margin-top: 2rem;
+  text-align: center;
+  color: var(--color-primary);
+  background-color: var(--color-bg);
+  border: 1px dashed var(--color-primary);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
 /* GRID */
 .expenseGrid {
   display: grid;
