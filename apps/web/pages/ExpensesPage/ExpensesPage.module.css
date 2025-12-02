@@ -129,11 +129,35 @@
 }
 
 .splitRow {
-  display: flex;
-  justify-content: space-between;
-  padding: 4px 0;
-  color: var(--color-primary);
+  padding: 2px 0 !important;
+  display: flex !important;;
+  justify-content: space-between !important;
+  gap: 1rem;
+}
+
+.splitName {
   font-size: 0.9rem;
+  color: var(--color-primary);
+}
+
+.splitValue {
+  font-size: 0.9rem;
+  color: var(--color-primary);                  
+  font-weight: 500;
+}
+
+/* ===== CHECKBOXES ===== */
+.splitRow :global(.MuiCheckbox-root) {
+  color: var(--color-primary) !important; 
+}
+
+.splitRow :global(.MuiCheckbox-root.Mui-checked) {
+  color: var(--color-primary) !important; /* checked square */
+}
+
+.splitRow :global(.MuiCheckbox-root:hover) {
+  background-color: rgba(255,255,255,0.12) !important;
+  border-radius: 4px;
 }
 
 .viewGroupButton {

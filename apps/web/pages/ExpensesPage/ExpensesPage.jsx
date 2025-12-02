@@ -11,6 +11,7 @@ import {
   Button,
   Stack,
   Checkbox,
+  ListItem,
 } from "@mui/material";
 import Link from "next/link";
 import styles from "./ExpensesPage.module.css";
@@ -306,12 +307,9 @@ export default function ExpensesPage() {
                 </Typography>
 
                 {exp.split.map((u) => (
-                  <Box key={u.id} className={styles.splitRow}>
-                    <span>{u.profiles?.full_name}</span>
+                  <ListItem key={u.id} className={styles.splitRow}>
+                    <Typography className={styles.splitName}>{u.profiles?.full_name}</Typography>
                     <Stack direction="row" spacing={1} alignItems="center">
-                      <strong>${Number(u.amount).toFixed(2)}</strong>
-
-                      {/* YOUR checkbox only */}
                       {u.user_id === profileId && (
                         <Checkbox
                           size="small"
@@ -319,8 +317,23 @@ export default function ExpensesPage() {
                           onChange={() => togglePaid(u)}
                         />
                       )}
+                      <Typography className={styles.splitValue}>
+                                {[
+                                  u.amount != null
+                                    ? `$${Number(u.amount).toFixed(2)}`
+                                    : null,
+                                  u.percent != null
+                                    ? `${Number(u.percent).toFixed(2)}%`
+                                    : null,
+                                  u.ratio_part != null
+                                    ? `ratio ${Number(u.ratio_part)}`
+                                    : null,
+                                ]
+                                  .filter(Boolean)
+                                  .join(' • ') || '-'}
+                      </Typography>
                     </Stack>
-                  </Box>
+                  </ListItem>
                 ))}
               </Box>
 
