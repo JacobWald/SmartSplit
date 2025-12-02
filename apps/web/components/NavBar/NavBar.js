@@ -15,12 +15,15 @@ import {
   Box,
 } from '@mui/material';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import HomeIcon from '@mui/icons-material/Home';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
 export default function NavBar() {
+  const router = useRouter();
+
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
 
@@ -28,13 +31,11 @@ export default function NavBar() {
   const [pendingFriendCount, setPendingFriendCount] = useState(0);
   const [friendRequests, setFriendRequests] = useState([]);
   const [friendRequestsLoading, setFriendRequestsLoading] = useState(false);
-  const [respondingRequestId, setRespondingRequestId] = useState(null);
 
   // Group invite state
   const [pendingGroupInviteCount, setPendingGroupInviteCount] = useState(0);
   const [groupInvites, setGroupInvites] = useState([]);
   const [groupInvitesLoading, setGroupInvitesLoading] = useState(false);
-  const [respondingGroupInviteId, setRespondingGroupInviteId] = useState(null);
 
   // Bell dropdown state
   const [bellAnchorEl, setBellAnchorEl] = useState(null);
@@ -44,10 +45,120 @@ export default function NavBar() {
 
   const totalNotifications = pendingFriendCount + pendingGroupInviteCount;
 
+  // same helper the Groups page uses
+  const parseJSON = async (res) => {
+    if (!res.ok) return null;
+    const text = await res.text();
+    return text ? JSON.parse(text) : null;
+  };
+
+  // ---- helpers to load notifications ----
+  async function loadPendingFriendRequests(currentUserId) {
+    const uid = currentUserId || user?.id;
+    if (!uid) {
+      setPendingFriendCount(0);
+      setFriendRequests([]);
+      return;
+    }
+
+    setFriendRequestsLoading(true);
+
+    const { data, error } = await supabase
+      .from('user_friend_requests')
+      .select(
+        `
+          id,
+          created_at,
+          from_user:from_user_id (
+            id,
+            full_name,
+            username,
+            phone
+          )
+        `
+      )
+      .eq('to_user_id', uid)
+      .eq('status', 'PENDING')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error loading pending friend requests:', error);
+      setPendingFriendCount(0);
+      setFriendRequests([]);
+      setFriendRequestsLoading(false);
+      return;
+    }
+
+    setPendingFriendCount(data?.length || 0);
+    setFriendRequests(data || []);
+    setFriendRequestsLoading(false);
+  }
+
+  // Use /api/groups like the Groups page to detect invites
+  async function loadGroupInvites(currentUserId) {
+    const uid = currentUserId || user?.id;
+    if (!uid) {
+      setPendingGroupInviteCount(0);
+      setGroupInvites([]);
+      return;
+    }
+
+    setGroupInvitesLoading(true);
+
+    try {
+      const res = await fetch('/api/groups');
+      const groups = await parseJSON(res);
+
+      console.log('[NavBar] /api/groups result for invites', {
+        uid,
+        groups,
+      });
+
+      if (!Array.isArray(groups)) {
+        setPendingGroupInviteCount(0);
+        setGroupInvites([]);
+        return;
+      }
+
+      // Match the invites logic from Groups page (INVITED membership for this user)
+      const invites = [];
+      for (const g of groups) {
+        if (!Array.isArray(g.members)) continue;
+
+        const membership = g.members.find(
+          (m) => m.user_id === uid && m.status === 'INVITED'
+        );
+
+        if (membership) {
+          invites.push({
+            id: `${g.id}-${uid}`, // synthetic id for React key
+            group_id: g.id,
+            group_name: g.name,
+            created_at: membership.created_at ?? g.created_at ?? null,
+          });
+        }
+      }
+
+      console.log('[NavBar] computed groupInvites', invites);
+
+      setPendingGroupInviteCount(invites.length);
+      setGroupInvites(invites);
+    } catch (error) {
+      console.error('Error loading group invites:', error);
+      setPendingGroupInviteCount(0);
+      setGroupInvites([]);
+    } finally {
+      setGroupInvitesLoading(false);
+    }
+  }
+
   const handleBellOpen = (event) => {
-    // If there are no notifications, do nothing at all
-    if (totalNotifications <= 0) return;
     setBellAnchorEl(event.currentTarget);
+    // Refresh notifications whenever the bell is opened
+    if (user) {
+      loadPendingFriendRequests(user.id);
+      loadGroupInvites(user.id);
+    }
   };
 
   const handleBellClose = () => {
@@ -78,86 +189,35 @@ export default function NavBar() {
     };
   }, []);
 
-  // Load list + count of pending friend requests
+  // Initial load of notifications when user changes
   useEffect(() => {
     if (!user) {
       setPendingFriendCount(0);
       setFriendRequests([]);
-      return;
-    }
-
-    const fetchPendingFriendRequests = async () => {
-      setFriendRequestsLoading(true);
-
-      const { data, error } = await supabase
-        .from('user_friend_requests')
-        .select(
-          `
-            id,
-            created_at,
-            from_user:from_user_id (
-              id,
-              full_name,
-              username,
-              phone
-            )
-          `
-        )
-        .eq('to_user_id', user.id)
-        .eq('status', 'PENDING')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error loading pending friend requests:', error);
-        setPendingFriendCount(0);
-        setFriendRequests([]);
-        setFriendRequestsLoading(false);
-        return;
-      }
-
-      setPendingFriendCount(data?.length || 0);
-      setFriendRequests(data || []);
-      setFriendRequestsLoading(false);
-    };
-
-    fetchPendingFriendRequests();
-  }, [user]);
-
-  // Load list + count of group invites (simple, non-relational query)
-  useEffect(() => {
-    if (!user) {
       setPendingGroupInviteCount(0);
       setGroupInvites([]);
       return;
     }
 
-    const fetchGroupInvites = async () => {
-      setGroupInvitesLoading(true);
+    loadPendingFriendRequests(user.id);
+    loadGroupInvites(user.id);
+  }, [user]);
 
-      const { data, error } = await supabase
-        .from('group_members')
-        .select('id, group_id, created_at')
-        .eq('user_id', user.id)
-        .eq('status', 'INVITED')
-        .order('created_at', { ascending: false });
+  // Listen for "smartsplit-notifications-update" events from other pages (e.g., Profile after accepting a friend)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
 
-      if (error) {
-        console.warn(
-          'Group invites query failed, hiding invites in bell menu:',
-          error.message || error
-        );
-        setPendingGroupInviteCount(0);
-        setGroupInvites([]);
-        setGroupInvitesLoading(false);
-        return;
+    const handler = () => {
+      if (user) {
+        loadPendingFriendRequests(user.id);
+        loadGroupInvites(user.id);
       }
-
-      setPendingGroupInviteCount(data?.length || 0);
-      setGroupInvites(data || []);
-      setGroupInvitesLoading(false);
     };
 
-    fetchGroupInvites();
+    window.addEventListener('smartsplit-notifications-update', handler);
+    return () => {
+      window.removeEventListener('smartsplit-notifications-update', handler);
+    };
   }, [user]);
 
   const handleLogout = async () => {
@@ -165,86 +225,6 @@ export default function NavBar() {
     setUser(null);
     if (typeof window !== 'undefined') {
       window.location.href = '/login';
-    }
-  };
-
-  // Accept / reject friend request
-  const handleRespondToFriendRequest = async (requestId, fromUserId, action) => {
-    if (!user) return;
-
-    setRespondingRequestId(requestId);
-    try {
-      // Update request status
-      const { error: updateError } = await supabase
-        .from('user_friend_requests')
-        .update({
-          status: action === 'ACCEPT' ? 'ACCEPTED' : 'REJECTED',
-          responded_at: new Date().toISOString(),
-        })
-        .eq('id', requestId)
-        .eq('to_user_id', user.id)
-        .eq('status', 'PENDING');
-
-      if (updateError) {
-        console.error('Error updating friend request:', updateError);
-        return;
-      }
-
-      // If accepted, create mutual friendships
-      if (action === 'ACCEPT') {
-        const { error: insertError } = await supabase
-          .from('user_friends')
-          .insert([
-            { user_id: user.id, friend_id: fromUserId },
-            { user_id: fromUserId, friend_id: user.id },
-          ]);
-
-        if (insertError) {
-          console.error('Error inserting friends:', insertError);
-        }
-      }
-
-      // Update UI state
-      setFriendRequests((prev) => prev.filter((req) => req.id !== requestId));
-      setPendingFriendCount((prev) => Math.max(0, prev - 1));
-    } catch (e) {
-      console.error('Error responding to friend request:', e);
-    } finally {
-      setRespondingRequestId(null);
-    }
-  };
-
-  // Accept / reject group invite
-  const handleRespondToGroupInvite = async (inviteId, action) => {
-    if (!user) return;
-
-    setRespondingGroupInviteId(inviteId);
-    try {
-      const update = {
-        status: action === 'ACCEPT' ? 'ACCEPTED' : 'REJECTED',
-      };
-      if (action === 'ACCEPT') {
-        update.joined_at = new Date().toISOString();
-      }
-
-      const { error: updateError } = await supabase
-        .from('group_members')
-        .update(update)
-        .eq('id', inviteId)
-        .eq('user_id', user.id)
-        .eq('status', 'INVITED');
-
-      if (updateError) {
-        console.error('Error updating group invite:', updateError);
-        return;
-      }
-
-      setGroupInvites((prev) => prev.filter((inv) => inv.id !== inviteId));
-      setPendingGroupInviteCount((prev) => Math.max(0, prev - 1));
-    } catch (e) {
-      console.error('Error responding to group invite:', e);
-    } finally {
-      setRespondingGroupInviteId(null);
     }
   };
 
@@ -313,6 +293,10 @@ export default function NavBar() {
                   color: 'var(--color-primary)',
                   borderRadius: '999px',
                   boxShadow: 1,
+                  '&:hover': {
+                    backgroundColor: 'var(--color-secondary)',
+                    color: 'var(--color-primary)',
+                  },
                 }}
               >
                 <Badge
@@ -325,228 +309,171 @@ export default function NavBar() {
                 </Badge>
               </IconButton>
 
-              {totalNotifications > 0 && (
-                <Menu
-                  anchorEl={bellAnchorEl}
-                  open={isBellMenuOpen}
-                  onClose={handleBellClose}
-                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                  PaperProps={{
-                    sx: {
-                      mt: 1,
-                      borderRadius: 2,
-                      bgcolor: 'var(--color-tertiary)',
-                      minWidth: 300,
-                      maxWidth: 360,
-                    },
-                  }}
-                >
-                  {/* Friend Requests Section */}
-                  {friendRequests.length > 0 && (
-                    <>
-                      <MenuItem disabled>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            textTransform: 'uppercase',
-                            letterSpacing: 1,
-                            fontWeight: 600,
-                            opacity: 0.7,
-                          }}
-                        >
-                          Friend Requests
-                        </Typography>
-                      </MenuItem>
-
-                      {friendRequests.map((req) => (
-                        <MenuItem
-                          key={req.id}
-                          sx={{ alignItems: 'flex-start', py: 1.2 }}
-                        >
-                          <Box
-                            sx={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              width: '100%',
-                              gap: 0.5,
-                            }}
-                          >
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                fontWeight: 600,
-                                color: 'var(--color-primary)',
-                              }}
-                            >
-                              {req.from_user?.full_name ||
-                                req.from_user?.username ||
-                                'New friend request'}
-                            </Typography>
-
-                            {req.from_user?.username && (
-                              <Typography
-                                variant="caption"
-                                sx={{ opacity: 0.8 }}
-                              >
-                                @{req.from_user.username}
-                              </Typography>
-                            )}
-
-                            {req.from_user?.phone && (
-                              <Typography
-                                variant="caption"
-                                sx={{ opacity: 0.8 }}
-                              >
-                                {req.from_user.phone}
-                              </Typography>
-                            )}
-
-                            <Box
-                              sx={{
-                                display: 'flex',
-                                justifyContent: 'flex-end',
-                                gap: 1,
-                                mt: 1,
-                              }}
-                            >
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() =>
-                                  handleRespondToFriendRequest(
-                                    req.id,
-                                    req.from_user?.id,
-                                    'REJECT'
-                                  )
-                                }
-                                disabled={respondingRequestId === req.id}
-                              >
-                                {respondingRequestId === req.id
-                                  ? 'Rejecting…'
-                                  : 'Reject'}
-                              </Button>
-                              <Button
-                                size="small"
-                                variant="contained"
-                                onClick={() =>
-                                  handleRespondToFriendRequest(
-                                    req.id,
-                                    req.from_user?.id,
-                                    'ACCEPT'
-                                  )
-                                }
-                                disabled={respondingRequestId === req.id}
-                              >
-                                {respondingRequestId === req.id
-                                  ? 'Accepting…'
-                                  : 'Accept'}
-                              </Button>
-                            </Box>
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </>
+              <Menu
+                anchorEl={bellAnchorEl}
+                open={isBellMenuOpen}
+                onClose={handleBellClose}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                PaperProps={{
+                  sx: {
+                    mt: 1,
+                    borderRadius: 2,
+                    bgcolor: 'var(--color-tertiary)',
+                    minWidth: 300,
+                    maxWidth: 360,
+                  },
+                }}
+              >
+                {/* No notifications state */}
+                {!friendRequestsLoading &&
+                  !groupInvitesLoading &&
+                  friendRequests.length === 0 &&
+                  groupInvites.length === 0 && (
+                    <MenuItem disabled>
+                      <Typography
+                        variant="body2"
+                        sx={{ opacity: 0.8, textAlign: 'center' }}
+                      >
+                        You don&apos;t have any notifications yet.
+                      </Typography>
+                    </MenuItem>
                   )}
 
-                  {/* Group Invites Section */}
-                  {groupInvites.length > 0 && (
-                    <>
-                      {friendRequests.length > 0 && (
-                        <MenuItem disabled>
-                          <Box
-                            sx={{
-                              borderTop: '1px solid rgba(0,0,0,0.08)',
-                              width: '100%',
-                            }}
-                          />
-                        </MenuItem>
+                {/* Friend Requests Section */}
+                {friendRequests.length > 0 && (
+                  <MenuItem disabled>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        textTransform: 'uppercase',
+                        letterSpacing: 1,
+                        fontWeight: 600,
+                        opacity: 0.7,
+                      }}
+                    >
+                      Friend Requests
+                    </Typography>
+                  </MenuItem>
+                )}
+
+                {friendRequests.map((req) => (
+                  <MenuItem
+                    key={req.id}
+                    sx={{ alignItems: 'flex-start', py: 1.2 }}
+                    onClick={() => {
+                      handleBellClose();
+                      router.push('/profile'); // go to profile/friends section
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        width: '100%',
+                        gap: 0.5,
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 600,
+                          color: 'var(--color-primary)',
+                        }}
+                      >
+                        {req.from_user?.full_name ||
+                          req.from_user?.username ||
+                          'New friend request'}
+                      </Typography>
+
+                      {req.from_user?.username && (
+                        <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                          @{req.from_user.username}
+                        </Typography>
                       )}
 
-                      <MenuItem disabled>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            textTransform: 'uppercase',
-                            letterSpacing: 1,
-                            fontWeight: 600,
-                            opacity: 0.7,
-                          }}
-                        >
-                          Group Invites
+                      {req.from_user?.phone && (
+                        <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                          {req.from_user.phone}
                         </Typography>
-                      </MenuItem>
+                      )}
 
-                      {groupInvites.map((inv) => (
-                        <MenuItem
-                          key={inv.id}
-                          sx={{ alignItems: 'flex-start', py: 1.2 }}
-                        >
-                          <Box
-                            sx={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              width: '100%',
-                              gap: 0.5,
-                            }}
-                          >
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                fontWeight: 600,
-                                color: 'var(--color-primary)',
-                              }}
-                            >
-                              Group invitation
-                            </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{ opacity: 0.6, mt: 0.5 }}
+                      >
+                        Tap to view and respond on Profile page
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                ))}
 
-                            <Typography
-                              variant="caption"
-                              sx={{ opacity: 0.8 }}
-                            >
-                              Group ID: {inv.group_id}
-                            </Typography>
+                {/* Divider between friend + group sections */}
+                {groupInvites.length > 0 && friendRequests.length > 0 && (
+                  <MenuItem disabled>
+                    <Box
+                      sx={{
+                        borderTop: '1px solid rgba(0,0,0,0.08)',
+                        width: '100%',
+                      }}
+                    />
+                  </MenuItem>
+                )}
 
-                            <Box
-                              sx={{
-                                display: 'flex',
-                                justifyContent: 'flex-end',
-                                gap: 1,
-                                mt: 1,
-                              }}
-                            >
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() =>
-                                  handleRespondToGroupInvite(inv.id, 'REJECT')
-                                }
-                                disabled={respondingGroupInviteId === inv.id}
-                              >
-                                {respondingGroupInviteId === inv.id
-                                  ? 'Rejecting…'
-                                  : 'Reject'}
-                              </Button>
-                              <Button
-                                size="small"
-                                variant="contained"
-                                onClick={() =>
-                                  handleRespondToGroupInvite(inv.id, 'ACCEPT')
-                                }
-                                disabled={respondingGroupInviteId === inv.id}
-                              >
-                                {respondingGroupInviteId === inv.id
-                                  ? 'Accepting…'
-                                  : 'Accept'}
-                              </Button>
-                            </Box>
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </>
-                  )}
-                </Menu>
-              )}
+                {/* Group Invites Section */}
+                {groupInvites.length > 0 && (
+                  <MenuItem disabled>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        textTransform: 'uppercase',
+                        letterSpacing: 1,
+                        fontWeight: 600,
+                        opacity: 0.7,
+                      }}
+                    >
+                      Group Invites
+                    </Typography>
+                  </MenuItem>
+                )}
+
+                {groupInvites.map((inv) => (
+                  <MenuItem
+                    key={inv.id}
+                    sx={{ alignItems: 'flex-start', py: 1.2 }}
+                    onClick={() => {
+                      handleBellClose();
+                      router.push('/groups'); // user can tap INVITES tab there
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        width: '100%',
+                        gap: 0.5,
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 600,
+                          color: 'var(--color-primary)',
+                        }}
+                      >
+                        Group invitation: {inv.group_name || 'New group'}
+                      </Typography>
+                      
+                      <Typography
+                        variant="caption"
+                        sx={{ opacity: 0.6, mt: 0.5 }}
+                      >
+                        Tap to view and respond on Groups page
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Menu>
             </>
           )}
 

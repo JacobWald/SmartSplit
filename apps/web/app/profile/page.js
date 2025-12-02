@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import {
   Box,
@@ -40,13 +39,12 @@ const cardSx = {
 };
 
 export default function ProfilePage() {
-  const router = useRouter();
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [infoMsg, setInfoMsg] = useState("");
+  const [authError, setAuthError] = useState(""); // 🔹 new: for "must sign in" message
 
   // Auth / profile state
   const [userId, setUserId] = useState(null);
@@ -127,13 +125,16 @@ export default function ProfilePage() {
         setLoading(true);
         setErrorMsg("");
         setInfoMsg("");
+        setAuthError("");
+        setUserId(null);
 
         // 1) Get current auth user
         const { data, error } = await supabase.auth.getUser();
-        if (error) throw error;
         const user = data?.user;
-        if (!user) {
-          router.replace("/login");
+
+        if (error || !user) {
+          console.warn("No signed-in user for Profile page:", error);
+          setAuthError("You must sign in to view the Profile page.");
           return;
         }
 
@@ -292,12 +293,14 @@ export default function ProfilePage() {
         }
       } catch (e) {
         console.error("Error loading profile:", e);
+        // If auth failed, we already set authError above.
+        // Here we treat as a generic load error *after* user exists.
         setErrorMsg(e?.message || "Failed to load profile.");
       } finally {
         setLoading(false);
       }
     })();
-  }, [router]);
+  }, []);
 
   async function handleSave() {
     if (!userId) return;
@@ -462,6 +465,11 @@ export default function ProfilePage() {
 
       // Remove request from local state
       setIncomingRequests((prev) => prev.filter((r) => r.id !== requestId));
+
+      // 🔔 Tell NavBar to refresh notifications
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("smartsplit-notifications-update"));
+      }
     } catch (e) {
       console.error("Error responding to request:", e);
       setErrorMsg(e?.message || "Unable to respond to friend request.");
@@ -500,6 +508,8 @@ export default function ProfilePage() {
     }
   }
 
+  // === RENDERING ===
+
   if (loading) {
     return (
       <Box
@@ -511,6 +521,26 @@ export default function ProfilePage() {
         }}
       >
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Not signed in → behave like Groups / Expenses
+  if (authError) {
+    return (
+      <Box
+        sx={{
+          minHeight: "60vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          px: 2,
+        }}
+      >
+        <Typography variant="h6" sx={{ color: "var(--color-primary)" }}>
+          {authError}
+        </Typography>
       </Box>
     );
   }
@@ -698,6 +728,7 @@ export default function ProfilePage() {
             >
               Add a friend
             </Typography>
+
             <Autocomplete
               options={searchableProfiles}
               open={showAutocompleteDropdown}
@@ -711,6 +742,50 @@ export default function ProfilePage() {
               inputValue={friendSearchInput}
               onInputChange={(_, newInput) => {
                 setFriendSearchInput(newInput);
+              }}
+              sx={{
+                "& .MuiInputBase-root": {
+                  backgroundColor: "var(--color-bg)",
+                  color: "var(--color-primary)",
+                  borderRadius: "8px",
+                  boxShadow: "0 1px 4px rgba(0, 0, 0, 0.15)",
+                },
+                "& .MuiFormLabel-root": {
+                  color: "var(--color-primary)",
+                },
+                "& .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "var(--color-primary)",
+                },
+                "& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline":
+                  {
+                    borderColor: "var(--color-secondary)",
+                  },
+                "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline":
+                  {
+                    borderColor: "var(--color-secondary)",
+                  },
+              }}
+              slotProps={{
+                paper: {
+                  sx: {
+                    backgroundColor: "var(--color-bg)",
+                    color: "var(--color-primary)",
+                    borderRadius: "12px",
+                    boxShadow: "0px 6px 20px rgba(0,0,0,0.25)",
+                  },
+                },
+                listbox: {
+                  sx: {
+                    "& .MuiAutocomplete-option": {
+                      "&:hover": {
+                        backgroundColor: "rgba(255,255,255,0.06)",
+                      },
+                      '&[aria-selected="true"]': {
+                        backgroundColor: "rgba(255,255,255,0.12)",
+                      },
+                    },
+                  },
+                },
               }}
               renderInput={(params) => (
                 <TextField
@@ -729,7 +804,7 @@ export default function ProfilePage() {
                 }
               }}
               disabled={addingFriend}
-              noOptionsText={"No users found"}
+              noOptionsText="No users found"
               forcePopupIcon={false}
             />
           </Box>
