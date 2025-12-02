@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start -p $PORT",      
-    "lint": "eslint",
-    "postinstall": "npm run build"      
+    "lint": "eslint",  
   },
   "engines": {
     "node": "20.x"

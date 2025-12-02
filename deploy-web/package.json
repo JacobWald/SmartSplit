@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "prestart": "npm run build",
-    "start": "next start -p 8080"
+    "start": "next start -p $PORT"
   },
   "dependencies": {
     "-": "^0.0.1",
