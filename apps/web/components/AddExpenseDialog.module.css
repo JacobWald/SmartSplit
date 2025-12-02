@@ -5,36 +5,53 @@
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25) !important;
   max-width: 560px !important;
   width: 92vw !important;
+  padding-top: 12px !important; 
 }
 
 .dialogTitle {
   color: var(--color-tertiary) !important;
   font-weight: 700 !important;
   letter-spacing: 0.5px;
+  font-size: 1.35rem !important;
+  padding-bottom: 6px !important;
 }
 
 .dialogContent {
   color: var(--color-tertiary) !important;
+  padding-top: 6px !important;
 }
 
-/* TextFields inside dialog */
+/* INPUT WRAPPER */
+.inputs,
 .inputs :global(.MuiInputBase-root),
 .inputs :global(.MuiOutlinedInput-root) {
   background-color: var(--color-bg) !important;
   color: var(--color-primary) !important;
   border-radius: 8px !important;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
-}
-
-.inputs :global(.MuiOutlinedInput-notchedOutline) {
-  border-color: transparent !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18) !important;
 }
 
 .inputs :global(.MuiInputLabel-root) {
   color: var(--color-primary) !important;
+  opacity: 0.9;
 }
 
-/* Buttons at the bottom */
+.inputs :global(.MuiOutlinedInput-notchedOutline) {
+  border-color: var(--color-primary) !important;
+}
+
+.inputs :global(.MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline) {
+  border-color: var(--color-secondary) !important;
+}
+
+.inputs :global(.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline) {
+  border-color: var(--color-secondary) !important;
+}
+
+.inputs :global(.MuiInputBase-input) {
+  color: var(--color-primary) !important;
+}
+
 .dialogButton {
   background-color: var(--color-bg) !important;
   color: var(--color-primary) !important;
@@ -43,23 +60,23 @@
   border-radius: 8px !important;
   padding: 6px 14px !important;
   box-shadow: 0 1px 4px rgba(0,0,0,0.15) !important;
-  transition: background-color .2s ease-in-out !important;
 }
 
 .dialogButton:hover {
   background-color: var(--color-secondary) !important;
+  color: var(--color-primary) !important;
 }
 
-/* Each member row in the split list */
 .memberRow {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .memberLabel {
   flex-grow: 1;
-  color: var(--color-tertiary);
+  color: var(--color-tertiary) !important;
+  font-weight: 500;
 }
 
 .customAmountField {
@@ -68,38 +85,36 @@
 
 .splitMethodLabel {
   color: var(--color-tertiary);
-  font-weight: 500;
+  font-weight: 600;
+  margin-top: 10px;
 }
 
-/* Helper text in dialog */
 .helperText {
   color: var(--color-tertiary);
-  opacity: 0.9;
+  opacity: 0.85;
   font-size: 0.85rem;
+  margin-bottom: 6px;
 }
 
-/* ===== RADIO BUTTONS ===== */
 .dialogContent :global(.MuiRadio-root) {
-  color: var(--color-tertiary) !important; /* outline + hover */
+  color: var(--color-tertiary) !important;
 }
 
 .dialogContent :global(.MuiRadio-root.Mui-checked) {
-  color: var(--color-secondary) !important; /* checked circle */
+  color: var(--color-secondary) !important;
 }
 
-/* Hover color */
 .dialogContent :global(.MuiRadio-root:hover) {
   background-color: rgba(255,255,255,0.12) !important;
   border-radius: 50%;
 }
 
-/* ===== CHECKBOXES ===== */
 .dialogContent :global(.MuiCheckbox-root) {
-  color: var(--color-tertiary) !important; /* unchecked outline */
+  color: var(--color-tertiary) !important;
 }
 
 .dialogContent :global(.MuiCheckbox-root.Mui-checked) {
-  color: var(--color-secondary) !important; /* checked square */
+  color: var(--color-secondary) !important;
 }
 
 .dialogContent :global(.MuiCheckbox-root:hover) {

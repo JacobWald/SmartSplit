@@ -23,8 +23,8 @@ export default function AddExpenseDialog({
   onSubmit,
   loading = false,
   groupName = "",
-  mode = "create",           // 🔥 NEW
-  expense = null,            // 🔥 NEW
+  mode = "create",
+  expense = null,
 }) {
   const isEdit = mode === "edit";
 
@@ -38,11 +38,9 @@ export default function AddExpenseDialog({
 
   const acceptedMembers = members.filter((m) => m.status === "ACCEPTED");
 
-  // ----------------------------------------------------
-  // LOAD EXISTING DATA WHEN EDITING
-  // ----------------------------------------------------
+  // Load existing expense into dialog
   useEffect(() => {
-    if (!open) return; // only load when dialog opens
+    if (!open) return;
 
     if (isEdit && expense) {
       setTitle(expense.title);
@@ -51,7 +49,6 @@ export default function AddExpenseDialog({
 
       const assigned = expense.assigned || [];
 
-      // Determine split method
       const hasCustom = assigned.some((a) => a.amount !== null);
       setSplitMethod(hasCustom ? "custom" : "equal");
 
@@ -65,7 +62,7 @@ export default function AddExpenseDialog({
       });
       setCustomAmounts(amountsMap);
     } else {
-      // Reset for CREATE
+      // Reset
       setTitle("");
       setAmount("");
       setNote("");
@@ -76,11 +73,11 @@ export default function AddExpenseDialog({
   }, [open, isEdit, expense, members]);
 
   const handleToggleMember = (id) => {
-    if (selectedMembers.includes(id)) {
-      setSelectedMembers(selectedMembers.filter((m) => m !== id));
-    } else {
-      setSelectedMembers([...selectedMembers, id]);
-    }
+    setSelectedMembers((prev) =>
+      prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id]
+    );
   };
 
   const handleCustomAmountChange = (userId, val) => {
@@ -90,9 +87,6 @@ export default function AddExpenseDialog({
     });
   };
 
-  // ----------------------------------------------------
-  // SAVE (Create or Edit)
-  // ----------------------------------------------------
   const handleSave = () => {
     setError("");
 
@@ -105,7 +99,7 @@ export default function AddExpenseDialog({
 
     const total = Number(amount);
 
-    // Custom split must sum correctly
+    // Validate custom split
     if (splitMethod === "custom") {
       let sum = 0;
       selectedMembers.forEach((id) => {
@@ -114,13 +108,10 @@ export default function AddExpenseDialog({
       });
 
       if (Math.round(sum * 100) !== Math.round(total * 100)) {
-        return setError(
-          "Custom amounts must add up exactly to the total."
-        );
+        return setError("Custom amounts must equal the total.");
       }
     }
 
-    // ---------------------- PAYLOAD ----------------------
     const payload = {
       mode,
       id: isEdit ? expense.id : undefined,
@@ -153,29 +144,39 @@ export default function AddExpenseDialog({
 
       <DialogContent className={styles.dialogContent}>
         <Stack spacing={2}>
-          <TextField
-            label="Title *"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            fullWidth
-          />
 
-          <TextField
-            label="Amount *"
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            fullWidth
-          />
+          {/* TITLE */}
+          <div className={styles.inputs}>
+            <TextField
+              label="Title *"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              fullWidth
+            />
+          </div>
 
-          <TextField
-            label="Note (optional)"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            fullWidth
-            multiline
-            minRows={2}
-          />
+          {/* AMOUNT */}
+          <div className={styles.inputs}>
+            <TextField
+              label="Amount *"
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              fullWidth
+            />
+          </div>
+
+          {/* NOTE */}
+          <div className={styles.inputs}>
+            <TextField
+              label="Note (optional)"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              fullWidth
+              multiline
+              minRows={2}
+            />
+          </div>
 
           <div className={styles.splitMethodLabel}>Split method</div>
 
@@ -200,9 +201,7 @@ export default function AddExpenseDialog({
 
           <p className={styles.helperText}>
             Select members included in this expense.
-            {splitMethod === "custom"
-              ? " Enter individual amounts below."
-              : ""}
+            {splitMethod === "custom" && " Enter individual amounts below."}
           </p>
 
           {acceptedMembers.map((m) => (
@@ -215,40 +214,49 @@ export default function AddExpenseDialog({
                   />
                 }
                 label={`${m.full_name} — ${m.status}`}
+                className={styles.memberLabel}
               />
 
               {splitMethod === "custom" &&
                 selectedMembers.includes(m.user_id) && (
-                  <TextField
-                    type="number"
-                    placeholder="Amount"
-                    className={styles.customAmountField}
-                    value={customAmounts[m.user_id] || ""}
-                    onChange={(e) =>
-                      handleCustomAmountChange(
-                        m.user_id,
-                        e.target.value
-                      )
-                    }
-                  />
+                  <div className={styles.inputs}>
+                    <TextField
+                      type="number"
+                      placeholder="Amount"
+                      className={styles.customAmountField}
+                      value={customAmounts[m.user_id] || ""}
+                      onChange={(e) =>
+                        handleCustomAmountChange(
+                          m.user_id,
+                          e.target.value
+                        )
+                      }
+                    />
+                  </div>
                 )}
             </div>
           ))}
 
           {error && (
-            <p style={{ color: "red", fontWeight: 600 }}>
-              {error}
-            </p>
+            <p style={{ color: "red", fontWeight: 600 }}>{error}</p>
           )}
         </Stack>
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
+        <Button
+          onClick={onClose}
+          disabled={loading}
+          className={styles.dialogButton}
+        >
           Cancel
         </Button>
 
-        <Button onClick={handleSave} disabled={loading}>
+        <Button
+          onClick={handleSave}
+          disabled={loading}
+          className={styles.dialogButton}
+        >
           {isEdit ? "Save Changes" : "Save Expense"}
         </Button>
       </DialogActions>
