@@ -462,6 +462,11 @@ export default function ProfilePage() {
 
       // Remove request from local state
       setIncomingRequests((prev) => prev.filter((r) => r.id !== requestId));
+
+      // 🔔 Tell NavBar to refresh notifications
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("smartsplit-notifications-update"));
+      }
     } catch (e) {
       console.error("Error responding to request:", e);
       setErrorMsg(e?.message || "Unable to respond to friend request.");
@@ -698,6 +703,7 @@ export default function ProfilePage() {
             >
               Add a friend
             </Typography>
+
             <Autocomplete
               options={searchableProfiles}
               open={showAutocompleteDropdown}
@@ -711,6 +717,50 @@ export default function ProfilePage() {
               inputValue={friendSearchInput}
               onInputChange={(_, newInput) => {
                 setFriendSearchInput(newInput);
+              }}
+              sx={{
+                "& .MuiInputBase-root": {
+                  backgroundColor: "var(--color-bg)",
+                  color: "var(--color-primary)",
+                  borderRadius: "8px",
+                  boxShadow: "0 1px 4px rgba(0, 0, 0, 0.15)",
+                },
+                "& .MuiFormLabel-root": {
+                  color: "var(--color-primary)",
+                },
+                "& .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "var(--color-primary)",
+                },
+                "& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline":
+                  {
+                    borderColor: "var(--color-secondary)",
+                  },
+                "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline":
+                  {
+                    borderColor: "var(--color-secondary)",
+                  },
+              }}
+              slotProps={{
+                paper: {
+                  sx: {
+                    backgroundColor: "var(--color-bg)",
+                    color: "var(--color-primary)",
+                    borderRadius: "12px",
+                    boxShadow: "0px 6px 20px rgba(0,0,0,0.25)",
+                  },
+                },
+                listbox: {
+                  sx: {
+                    "& .MuiAutocomplete-option": {
+                      "&:hover": {
+                        backgroundColor: "rgba(255,255,255,0.06)",
+                      },
+                      '&[aria-selected="true"]': {
+                        backgroundColor: "rgba(255,255,255,0.12)",
+                      },
+                    },
+                  },
+                },
               }}
               renderInput={(params) => (
                 <TextField
@@ -729,7 +779,7 @@ export default function ProfilePage() {
                 }
               }}
               disabled={addingFriend}
-              noOptionsText={"No users found"}
+              noOptionsText="No users found"
               forcePopupIcon={false}
             />
           </Box>
