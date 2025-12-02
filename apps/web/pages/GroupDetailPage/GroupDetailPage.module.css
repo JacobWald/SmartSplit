@@ -119,42 +119,28 @@
 
 .expenseFilterBar {
   display: inline-flex;
-  gap: 0.5rem;
-  margin-top: 0.25rem;
-  margin-bottom: 0.75rem;
   background-color: var(--color-primary);
-  padding: 0.25rem;
   border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 0.15rem;
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .expenseFilterButton {
-  border: none;
-  background: transparent;
-  padding: 0.35rem 0.9rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-  color: var(--color-bg);
-  opacity: 0.7;
-  transition: background-color 0.15s ease, opacity 0.15s ease,
-    transform 0.05s ease;
-}
-
-.expenseFilterButton:hover {
-  opacity: 0.9;
-  background-color: var(--color-secondary);
-  color: var(--color-primary);
+  border-radius: 999px !important;
+  text-transform: uppercase !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  padding: 0.35rem 1rem !important;
+  background-color: transparent !important;
+  color: var(--color-bg) !important;
+  box-shadow: none !important;
 }
 
 .expenseFilterButtonActive {
-  background-color: var(--color-bg);
-  color: var(--color-primary);
-  opacity: 1;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
-  transform: translateY(-1px);
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
 }
 
 .expenseCardContent {

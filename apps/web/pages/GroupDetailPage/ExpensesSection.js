@@ -201,7 +201,7 @@ export default function ExpensesSection({
         sx={{ mt: 3, mb: 1 }}
       >
         <Box className={styles.expenseFilterBar}>
-          <button
+          <Button
             type="button"
             className={
               expenseFilter === 'unfulfilled'
@@ -211,9 +211,9 @@ export default function ExpensesSection({
             onClick={() => setExpenseFilter('unfulfilled')}
           >
             Outstanding
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
             className={
               expenseFilter === 'fulfilled'
@@ -223,7 +223,7 @@ export default function ExpensesSection({
             onClick={() => setExpenseFilter('fulfilled')}
           >
             Fulfilled
-          </button>
+          </Button>
         </Box>
 
         {canManageExpenses && (

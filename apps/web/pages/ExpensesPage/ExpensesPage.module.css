@@ -24,26 +24,23 @@
   padding: 0.15rem;
   margin-top: 1rem;
   margin-bottom: 1.5rem;
-  gap: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .filterButton {
-  border: none;
-  background: transparent;
-  padding: 6px 16px;
-  border-radius: 999px;
+  border-radius: 999px !important;
+  text-transform: uppercase !important;
   font-size: 0.8rem !important;
   font-weight: 600 !important;
-  text-transform: uppercase !important;
-  cursor: pointer;
-  color: var(--color-bg);
+  padding: 0.35rem 1rem !important;
+  background-color: transparent !important;
+  color: var(--color-bg) !important;
+  box-shadow: none !important;
 }
 
 .filterButtonActive {
-  background-color: var(--color-bg);
-  color: var(--color-primary);
-  opacity: 1;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
 }
 
 /* Empty message */

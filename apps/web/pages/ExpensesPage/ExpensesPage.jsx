@@ -213,7 +213,7 @@ export default function ExpensesPage() {
 
       {/* FILTER BAR */}
       <Box className={styles.filterBar}>
-        <button
+        <Button
           className={
             filter === "outstanding"
               ? `${styles.filterButton} ${styles.filterButtonActive}`
@@ -222,9 +222,9 @@ export default function ExpensesPage() {
           onClick={() => setFilter("outstanding")}
         >
           OUTSTANDING
-        </button>
+        </Button>
 
-        <button
+        <Button
           className={
             filter === "paid"
               ? `${styles.filterButton} ${styles.filterButtonActive}`
@@ -233,7 +233,7 @@ export default function ExpensesPage() {
           onClick={() => setFilter("paid")}
         >
           PAID
-        </button>
+        </Button>
       </Box>
 
       {/* EXPENSE AREA */}
