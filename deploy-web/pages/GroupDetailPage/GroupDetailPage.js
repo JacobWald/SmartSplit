@@ -24,10 +24,16 @@ const decodeSlug = (value) => {
 };
 
 export default function GroupDetailPage() {
-  const { slug } = useParams();
+  const params = useParams();
+  const rawSlug =
+    typeof params?.slug === 'string'
+      ? params.slug
+      : Array.isArray(params?.slug)
+      ? params.slug[0]
+      : null;
 
   // Convert slug to ID
-  const groupId = decodeSlug(slug);
+  const groupId = decodeSlug(rawSlug);
 
   const [group, setGroup] = useState(null);
   const [expenses, setExpenses] = useState([]);

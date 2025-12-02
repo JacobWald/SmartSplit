@@ -27,6 +27,10 @@ export default function GroupMembersSection({
   onGroupUpdated,
   isReadOnly,
 }) {
+  //Protection against invalid group prop
+  if (!group || !Array.isArray(group.members)) {
+    return null;
+  }
   // role-change dialog
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [roleDialogMember, setRoleDialogMember] = useState(null);

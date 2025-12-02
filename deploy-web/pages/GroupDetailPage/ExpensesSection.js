@@ -32,6 +32,12 @@ export default function ExpensesSection({
   formatDate,
   isReadOnly,
 }) {
+
+  //Protection against invalid group prop
+  if (!group || !Array.isArray(group.members)) {
+    return null;
+  }
+  
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [savingExpense, setSavingExpense] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);

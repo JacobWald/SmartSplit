@@ -8,9 +8,6 @@
     "start": "next start -p $PORT",
     "lint": "eslint"
   },
-  "engines": {
-    "node": "20.x"
-  },
   "dependencies": {
     "-": "^0.0.1",
     "@emotion/react": "^11.14.0",
