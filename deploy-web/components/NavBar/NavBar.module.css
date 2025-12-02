@@ -1,0 +1,128 @@
+.navbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--color-tertiary) !important;
+    background-color: var(--color-primary);
+    padding: 1rem;
+
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1100;
+    overflow: visible;
+}
+
+.navbarSpacer {
+    height: 80px; /* Adjust based on navbar height */
+}
+
+.navbar-left {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+}
+
+.navbar-right {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1rem;
+}
+
+.logo {
+    width: 5rem;
+    height: 5rem;
+    margin-left: auto;
+}
+
+.navButton {
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+  border-radius: 8px !important;
+  padding: 0.5rem 1rem !important;
+  text-transform: none !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid var(--color-primary) !important;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.navButton:hover {
+  background-color: var(--color-secondary) !important;
+  color: var(--color-primary) !important;
+}
+
+.navbar-mobile{
+    display: none;
+}
+
+.navbar-mobile-hamburgerWrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    transition: 0.2s ease-in-out;
+}
+
+.navbar-mobile-hamburgerWrapper > div {
+    width: 1.5rem;
+    height: 0.2rem;
+    background-color: var(--color-primary);
+    border-radius: 10px;
+}
+
+@media only screen and (width < 1020px) {
+    .MuiButton-root {
+        margin-right: 0 !important;
+    }
+    .navbar-left {
+        gap: .5rem;
+    }
+    .navbar-right {
+        gap: .5rem;
+    }
+}
+
+@media only screen and (width < 890px) {
+    .navbar-left {
+        display: none;
+    }
+    .navbar-right {
+        width: 40px;
+        height: 40px;
+    }
+    .navbar-mobile {
+        display: flex;
+    }
+}
+
+.notificationBar {
+    width: 100%;
+    background-color: var(--color-secondary);
+    color: var(--color-primary);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 500;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.notificationLink {
+    color: var(--color-primary);
+    text-decoration: underline;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    text-align: center;
+}

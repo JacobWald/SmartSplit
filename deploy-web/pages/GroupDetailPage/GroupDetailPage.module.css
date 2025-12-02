@@ -1,0 +1,372 @@
+.loadingBox {
+  height: 70vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.groupTitle {
+  color: var(--color-primary);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.baseCurrency {
+  color: var(--color-primary);
+  opacity: 0.8;
+  margin-top: 4px;
+}
+
+.createButton {
+  background-color: var(--color-primary) !important;
+  color: var(--color-tertiary) !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 0.5rem 1rem !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s ease-in-out !important;
+}
+
+.createButton:hover {
+  background-color: var(--color-secondary) !important;
+  color: var(--color-primary) !important;
+}
+
+.sectionTitle {
+  color: var(--color-primary);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+/* ===== MEMBERS ===== */
+
+.memberList {
+  margin-bottom: 1.5rem;
+  background-color: var(--color-primary);         
+  border-radius: 14px;
+  border: none;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.25);
+  padding: 0.35rem 0;
+}
+
+.memberRow {
+  padding: 0.6rem 1.5rem !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+
+.memberInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.memberName {
+  color: var(--color-tertiary);                    
+  font-weight: 500;
+}
+
+.memberMeta {
+  color: var(--color-tertiary);
+  opacity: 0.85;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.memberDivider {
+  margin: 0 1.5rem;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+.memberActionButton {
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 4px 10px !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+  transition: background-color 0.2s ease-in-out !important;
+}
+
+.memberActionButton:hover {
+  background-color: var(--color-secondary) !important;
+  color: var(--color-primary) !important;
+}
+
+.memberDeleteButton {
+  background-color: #d32f2f !important;
+  color: #ffffff !important;
+  padding: 4px 12px !important;
+  border-radius: 8px !important;
+}
+
+.memberDeleteButton:hover {
+  background-color: #b71c1c !important;
+}
+
+/* ===== EXPENSES ===== */
+
+.expenseCard {
+  background-color: var(--color-primary) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+.expenseFilterBar {
+  display: inline-flex;
+  background-color: var(--color-primary);
+  border-radius: 999px;
+  padding: 0.15rem;
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.expenseFilterButton {
+  border-radius: 999px !important;
+  text-transform: uppercase !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  padding: 0.35rem 1rem !important;
+  background-color: transparent !important;
+  color: var(--color-bg) !important;
+  box-shadow: none !important;
+}
+
+.expenseFilterButtonActive {
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+}
+
+.expenseCardContent {
+  padding: 1.25rem 1.5rem !important;
+}
+
+.expenseHeader {
+  margin-bottom: 0.75rem;
+}
+
+.expenseTitle {
+  font-weight: 600;
+  color: var(--color-tertiary);
+}
+
+.expenseStatusPill {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.expenseStatusPillFulfilled {
+  background-color: rgba(46, 204, 113, 0.12); /* soft green */
+  border-color: rgba(46, 204, 113, 0.6);
+  color: #1e7f46;
+}
+
+.expenseStatusPillUnfulfilled {
+  background-color: rgba(231, 76, 60, 0.08); /* soft red */
+  border-color: rgba(231, 76, 60, 0.6);
+  color: #b03a2e;
+}
+
+
+.expenseDate {
+  font-size: 0.85rem;
+  color: var(--color-tertiary);
+  margin-top: 2px;
+}
+
+.expenseNote {
+  font-size: 0.9rem;
+  color: var(--color-tertiary);
+  opacity: 0.9;
+  margin-top: 4px;
+}
+
+.expenseAmountBox {
+  text-align: right !important;
+}
+
+.expenseAmount {
+  font-weight: 700;
+  color: var(--color-tertiary);            
+}
+
+.editButton {
+  margin-top: 6px !important;
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 4px 12px !important;
+  min-width: auto !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18) !important;
+}
+
+.editButton:hover {
+  background-color: var(--color-secondary) !important;
+  color: var(--color-primary) !important;
+}
+
+.noExpensesText {
+  color: var(--color-primary);
+  justify-content: center;
+}
+
+.deleteButton {
+  margin-top: 6px !important;
+  background-color: #d32f2f !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  padding: 4px 12px !important;
+  min-width: auto !important;
+}
+
+.deleteButton:hover {
+  background-color: #b71c1c !important;
+}
+
+
+/* Split breakdown */
+
+.splitBox {
+  margin-top: 0.9rem;
+  padding: 1.25rem 1.5rem !important;
+  background-color: var(--color-bg);
+  border-radius: 12px !important;
+}
+
+.splitLabel {
+  font-size: 0.8rem;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.splitList {
+  margin-top: 0.35rem;
+  padding-bottom: 0 !important;
+}
+
+.splitRow {
+  padding: 2px 0 !important;
+  display: flex !important;;
+  justify-content: space-between !important;
+  gap: 1rem;
+}
+
+.splitName {
+  font-size: 0.9rem;
+  color: var(--color-primary);
+}
+
+.splitValue {
+  font-size: 0.9rem;
+  color: var(--color-primary);                  
+  font-weight: 500;
+}
+
+.splitCheckbox {
+  padding: 0 4px !important;
+}
+
+/* ===== CHECKBOXES ===== */
+.splitRow :global(.MuiCheckbox-root) {
+  color: var(--color-primary) !important; 
+}
+
+.splitRow :global(.MuiCheckbox-root.Mui-checked) {
+  color: var(--color-primary) !important; /* checked square */
+}
+
+.splitRow :global(.MuiCheckbox-root:hover) {
+  background-color: rgba(255,255,255,0.12) !important;
+  border-radius: 4px;
+}
+
+.confirmDialogPaper {
+  background-color: var(--color-primary) !important;
+  color: var(--color-tertiary) !important;
+  border-radius: 14px !important;
+  padding: 1.25rem 1.5rem;
+}
+
+.confirmDialogTitle {
+  font-weight: 600;
+  color: var(--color-tertiary);
+}
+
+.confirmDialogContent {
+  margin-top: 0.25rem;
+  color: var(--color-tertiary);
+}
+
+.confirmDialogButtonPrimary {
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  border-radius: 999px !important;
+  padding: 0.3rem 1.1rem !important;
+}
+
+.confirmDialogButtonPrimary:hover {
+  background-color: var(--color-secondary) !important;
+  color: var(--color-primary) !important;
+}
+
+.confirmDialogButtonSecondary {
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  border-radius: 999px !important;
+  padding: 0.3rem 1.1rem !important;
+}
+
+.confirmDialogButtonSecondary:hover {
+  background-color: var(--color-secondary) !important;
+  color: var(--color-primary) !important;
+}
+
+/* Inputs in dialog */
+.inputs {
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+}
+
+.inputs :global(.MuiInputBase-root) {
+  background-color: var(--color-bg) !important;
+  color: var(--color-primary) !important;
+}
+
+.inputs :global(.MuiFormLabel-root) {
+  color: var(--color-primary) !important;
+}
+
+.inputs :global(.MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline) {
+  border-color: var(--color-primary) !important;
+}
+
+.inputs :global(.MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline) {
+  border-color: var(--color-secondary) !important;
+}
+
+.inputs :global(.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline) {
+  border-color: var(--color-secondary) !important;
+}
+
+.inputs :global(.MuiSelect-select) {
+  color: var(--color-primary) !important;
+}
