@@ -151,12 +151,18 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { title, amount, group_id, payer_id, note, selectedMembers, splitMethod, customAmounts } =
-      body;
+    const { title, amount, group_id, payer_id, note, assigned } = body;
 
     if (!title || !amount || !group_id || !payer_id) {
       return NextResponse.json(
         { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    if (!Array.isArray(assigned) || assigned.length === 0) {
+      return NextResponse.json(
+        { error: "assigned must be a non-empty array" },
         { status: 400 }
       );
     }
@@ -181,14 +187,11 @@ export async function POST(request) {
 
     const expense = expenseRows[0];
 
-    // 2. Insert assigned splits
-    const rows = selectedMembers.map((uid) => ({
+    // 2. Insert assigned splits coming from the client
+    const rows = assigned.map((a) => ({
       expense_id: expense.id,
-      user_id: uid,
-      amount:
-        splitMethod === "equal"
-          ? Number(amount) / selectedMembers.length
-          : Number(customAmounts?.[uid] ?? 0),
+      user_id: a.user_id,
+      amount: Number(a.amount),
       fulfilled: false,
     }));
 
