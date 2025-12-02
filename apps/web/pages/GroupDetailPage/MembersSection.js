@@ -25,7 +25,7 @@ export default function GroupMembersSection({
   currentUserId,
   friendProfiles,
   onGroupUpdated,
-  isReadOnly,         
+  isReadOnly,
 }) {
   // role-change dialog
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
@@ -207,9 +207,13 @@ export default function GroupMembersSection({
         direction="row"
         alignItems="center"
         justifyContent="space-between"
-        sx={{ mt: 3, mb: 1 }}
+        sx={{ mt: 0, mb: 1 }} // top spacing now handled in GroupDetailPage
       >
-        <Typography variant="h6" className={styles.sectionTitle}>
+        <Typography
+          variant="h6"
+          className={styles.sectionTitle}
+          sx={{ mt: 0, mb: 0.5 }}
+        >
           Members
         </Typography>
 

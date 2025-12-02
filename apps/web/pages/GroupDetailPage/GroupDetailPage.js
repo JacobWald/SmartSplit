@@ -14,7 +14,8 @@ const decodeSlug = (value) => {
   if (!value) return null;
 
   // If slug IS a UUID → use it directly
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (uuidRegex.test(value)) return value;
 
   // Otherwise: NOT supported for now (only UUID slugs allowed)
@@ -223,29 +224,33 @@ export default function GroupDetailPage() {
       </Stack>
 
       {/* Members */}
-      <GroupMembersSection
-        group={group}
-        isAdmin={isAdmin}
-        currentUserId={group.currentUserId}
-        friendProfiles={friendProfiles}
-        onGroupUpdated={reloadGroup}
-        isReadOnly={isReadOnly}
-      />
+      <Box sx={{ mt: 3 }}>
+        <GroupMembersSection
+          group={group}
+          isAdmin={isAdmin}
+          currentUserId={group.currentUserId}
+          friendProfiles={friendProfiles}
+          onGroupUpdated={reloadGroup}
+          isReadOnly={isReadOnly}
+        />
+      </Box>
 
       {/* Expenses */}
-      <ExpensesSection
-        group={group}
-        expenses={expenses}
-        expenseFilter={expenseFilter}
-        setExpenseFilter={setExpenseFilter}
-        isAdmin={isAdmin}
-        isModerator={isModerator}
-        currentUserId={group.currentUserId}
-        onExpensesUpdated={reloadExpenses}
-        memberNameFor={memberNameFor}
-        formatDate={formatDate}
-        isReadOnly={isReadOnly}
-      />
+      <Box sx={{ mt: 3 }}>
+        <ExpensesSection
+          group={group}
+          expenses={expenses}
+          expenseFilter={expenseFilter}
+          setExpenseFilter={setExpenseFilter}
+          isAdmin={isAdmin}
+          isModerator={isModerator}
+          currentUserId={group.currentUserId}
+          onExpensesUpdated={reloadExpenses}
+          memberNameFor={memberNameFor}
+          formatDate={formatDate}
+          isReadOnly={isReadOnly}
+        />
+      </Box>
     </Box>
   );
 }

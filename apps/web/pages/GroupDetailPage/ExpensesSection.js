@@ -30,7 +30,7 @@ export default function ExpensesSection({
   onExpensesUpdated,
   memberNameFor,
   formatDate,
-  isReadOnly,         
+  isReadOnly,
 }) {
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [savingExpense, setSavingExpense] = useState(false);
@@ -191,14 +191,21 @@ export default function ExpensesSection({
 
   return (
     <>
-      <Typography variant="h6" className={styles.sectionTitle}>
+      {/* Make header’s bottom margin small so it's close to the slider */}
+      <Typography
+        variant="h6"
+        className={styles.sectionTitle}
+        sx={{ marginBottom: 0.5 }} // 👈 tighten this
+      >
         Expenses
       </Typography>
+
+      {/* Remove big top margin so header sits closer to the filter buttons */}
       <Stack
         direction="row"
         alignItems="center"
         justifyContent="space-between"
-        sx={{ mt: 3, mb: 1 }}
+        sx={{ mt: 0, mb: 1 }} // 👈 was mt: 3
       >
         <Box className={styles.expenseFilterBar}>
           <Button
@@ -325,14 +332,10 @@ export default function ExpensesSection({
                     <List dense className={styles.splitList}>
                       {expense.assigned.map((ae) => {
                         const canToggle = canToggleAssignment(ae.user_id);
-                        const loading =
-                          togglingAssignmentId === ae.id;
+                        const loading = togglingAssignmentId === ae.id;
 
                         return (
-                          <ListItem
-                            key={ae.id}
-                            className={styles.splitRow}
-                          >
+                          <ListItem key={ae.id} className={styles.splitRow}>
                             {/* In read-only mode, no checkbox at all */}
                             {!isReadOnly && (
                               <Checkbox
