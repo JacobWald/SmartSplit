@@ -44,25 +44,15 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [infoMsg, setInfoMsg] = useState("");
-  const [authError, setAuthError] = useState(""); // 🔹 new: for "must sign in" message
+  const [authError, setAuthError] = useState("");
 
   // Auth / profile state
   const [userId, setUserId] = useState(null);
   const [email, setEmail] = useState("");
 
-  // Automatically clear success messages after a few seconds
-  useEffect(() => {
-    if (!infoMsg) return;
-
-    const timer = setTimeout(() => {
-      setInfoMsg("");
-    }, 4000); // 4 seconds
-
-    return () => clearTimeout(timer);
-  }, [infoMsg]);
-
+  // Profile fields
   const [fullName, setFullName] = useState("");
-  const [username, setUsername] = useState(""); // username shown under full name
+  const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
 
@@ -80,8 +70,16 @@ export default function ProfilePage() {
   // All profiles for dynamic friend search
   const [allProfiles, setAllProfiles] = useState([]);
 
-  // Search input for dynamic friend search
-  const [friendSearchInput, setFriendSearchInput] = useState("");
+  // Automatically clear success messages after a few seconds
+  useEffect(() => {
+    if (!infoMsg) return;
+
+    const timer = setTimeout(() => {
+      setInfoMsg("");
+    }, 4000);
+
+    return () => clearTimeout(timer);
+  }, [infoMsg]);
 
   const initials = useMemo(() => {
     const n = (fullName || email || "").trim();
@@ -105,20 +103,6 @@ export default function ProfilePage() {
     );
   }, [allProfiles, friends, userId]);
 
-  // Only show options after typing >= 3 chars, and filter by name/username
-  const searchableProfiles = useMemo(() => {
-    const term = friendSearchInput.trim().toLowerCase();
-    if (!term || term.length < 3) return [];
-    return availableProfiles.filter((p) => {
-      const name = (p.full_name || "").toLowerCase();
-      const handle = (p.username || "").toLowerCase();
-      return name.includes(term) || handle.includes(term);
-    });
-  }, [availableProfiles, friendSearchInput]);
-
-  // Whether the dropdown should be open at all
-  const showAutocompleteDropdown = friendSearchInput.trim().length >= 3;
-
   useEffect(() => {
     (async () => {
       try {
@@ -141,7 +125,6 @@ export default function ProfilePage() {
         setUserId(user.id);
         setEmail(user.email || "");
 
-        // Initial username from auth metadata (for self-check, etc.)
         const usernameFromMeta = user.user_metadata?.username || "";
         if (usernameFromMeta) {
           setUsername(usernameFromMeta);
@@ -154,13 +137,11 @@ export default function ProfilePage() {
           .eq("id", user.id)
           .single();
 
-        // Any error other than "no rows found" → real error
         if (profErr && profErr.code !== "PGRST116") {
           throw profErr;
         }
 
         if (profile) {
-          // Profile row exists: prefer full_name, then metadata
           const nameFromProfile =
             profile.full_name || user.user_metadata?.full_name || "";
 
@@ -213,7 +194,6 @@ export default function ProfilePage() {
             setUsername(usernameFromMeta2);
           }
 
-          // Auto-upsert a row so next visits read from the profiles table
           const { error: insertErr } = await supabase.from("profiles").upsert({
             id: user.id,
             full_name: nameFromMeta || null,
@@ -293,8 +273,6 @@ export default function ProfilePage() {
         }
       } catch (e) {
         console.error("Error loading profile:", e);
-        // If auth failed, we already set authError above.
-        // Here we treat as a generic load error *after* user exists.
         setErrorMsg(e?.message || "Failed to load profile.");
       } finally {
         setLoading(false);
@@ -340,13 +318,11 @@ export default function ProfilePage() {
     const friendId = profileOption.id;
     const friendName = profileOption.full_name || profileOption.username || "";
 
-    // Prevent adding yourself
     if (friendId === userId) {
       setErrorMsg("You cannot add yourself as a friend.");
       return;
     }
 
-    // Prevent adding someone who is already a friend
     const alreadyFriend = friends.some(
       (f) => f.friend && f.friend.id === friendId
     );
@@ -360,7 +336,6 @@ export default function ProfilePage() {
       setErrorMsg("");
       setInfoMsg("");
 
-      // Insert into user_friend_requests as PENDING
       const { error: reqErr } = await supabase
         .from("user_friend_requests")
         .insert({
@@ -381,7 +356,6 @@ export default function ProfilePage() {
         return;
       }
 
-      // Remove this profile from the available list so they can't be re-selected
       setAllProfiles((prev) => prev.filter((p) => p.id !== friendId));
 
       setInfoMsg(
@@ -406,7 +380,6 @@ export default function ProfilePage() {
       setErrorMsg("");
       setInfoMsg("");
 
-      // 1) Update request status
       const { error: updateError } = await supabase
         .from("user_friend_requests")
         .update({
@@ -424,7 +397,6 @@ export default function ProfilePage() {
       }
 
       if (action === "ACCEPT") {
-        // 2) Create mutual friendships in user_friends
         const { error: insertError } = await supabase
           .from("user_friends")
           .insert([
@@ -436,7 +408,6 @@ export default function ProfilePage() {
           console.error("Error inserting friends:", insertError);
         }
 
-        // 3) Refresh friends list
         const { data: friendsRows, error: friendsErr } = await supabase
           .from("user_friends")
           .select(
@@ -463,10 +434,8 @@ export default function ProfilePage() {
         setInfoMsg("Friend request rejected.");
       }
 
-      // Remove request from local state
       setIncomingRequests((prev) => prev.filter((r) => r.id !== requestId));
 
-      // 🔔 Tell NavBar to refresh notifications
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("smartsplit-notifications-update"));
       }
@@ -525,7 +494,6 @@ export default function ProfilePage() {
     );
   }
 
-  // Not signed in → behave like Groups / Expenses
   if (authError) {
     return (
       <Box
@@ -647,13 +615,12 @@ export default function ProfilePage() {
             sx={inputSx}
           />
 
-          {/* Username displayed right under Full Name */}
           <TextField
             label="Username"
             fullWidth
             margin="normal"
             value={username}
-            disabled // read-only; managed via signup / profile logic
+            disabled
             sx={inputSx}
           />
 
@@ -676,7 +643,6 @@ export default function ProfilePage() {
             sx={inputSx}
           />
 
-          {/* Edit / Save buttons */}
           {!editing ? (
             <Button
               variant="contained"
@@ -730,18 +696,23 @@ export default function ProfilePage() {
             </Typography>
 
             <Autocomplete
-              options={searchableProfiles}
-              open={showAutocompleteDropdown}
+              options={availableProfiles}
+              // Only show matches when user types ≥ 3 characters
+              filterOptions={(options, { inputValue }) => {
+                const term = inputValue.trim().toLowerCase();
+                if (term.length < 3) return [];
+                return options.filter((p) => {
+                  const name = (p.full_name || "").toLowerCase();
+                  const handle = (p.username || "").toLowerCase();
+                  return name.includes(term) || handle.includes(term);
+                });
+              }}
               getOptionLabel={(option) => {
                 if (!option) return "";
                 const name = option.full_name || "";
                 const handle = option.username || "";
                 if (name && handle) return `${name} (${handle})`;
                 return name || handle || "";
-              }}
-              inputValue={friendSearchInput}
-              onInputChange={(_, newInput) => {
-                setFriendSearchInput(newInput);
               }}
               sx={{
                 "& .MuiInputBase-root": {
@@ -771,7 +742,7 @@ export default function ProfilePage() {
                     backgroundColor: "var(--color-bg)",
                     color: "var(--color-primary)",
                     borderRadius: "12px",
-                    boxShadow: "0px 6px 20px rgba(0,0,0,0.25)",
+                    boxShadow: "0px 6px 20px rgba(0, 0, 0, 0.25)",
                   },
                 },
                 listbox: {
@@ -799,8 +770,6 @@ export default function ProfilePage() {
               onChange={(_, newValue) => {
                 if (newValue) {
                   handleAddFriend(newValue);
-                  // Clear the input after selecting a friend
-                  setFriendSearchInput("");
                 }
               }}
               disabled={addingFriend}
