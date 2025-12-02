@@ -88,15 +88,21 @@ export default function GroupsPage() {
   }, []);
 
   const filteredGroups = useMemo(() => {
-    if (!Array.isArray(groups)) return [];
+    if (!Array.isArray(groups) || !currentUser?.id) return [];
+
+    const isAcceptedMember = (g) =>
+      Array.isArray(g.members) &&
+      g.members.some(
+        (m) => m.user_id === currentUser.id && m.status === 'ACCEPTED'
+      );
 
     if (groupFilter === 'inactive') {
-      return groups.filter((g) => g.active === false);
+      // only show inactive groups where *you* are an ACCEPTED member
+      return groups.filter((g) => g.active === false && isAcceptedMember(g));
     }
 
     if (groupFilter === 'invites') {
-      if (!currentUser?.id) return [];
-      // show groups where THIS user has status === 'INVITED'
+      // invites tab: keep only groups where your status is INVITED
       return groups.filter(
         (g) =>
           Array.isArray(g.members) &&
@@ -106,8 +112,8 @@ export default function GroupsPage() {
       );
     }
 
-    // default: active
-    return groups.filter((g) => g.active !== false);
+    // default: active tab → only groups where you're ACCEPTED
+    return groups.filter((g) => g.active !== false && isAcceptedMember(g));
   }, [groups, groupFilter, currentUser]);
 
   const handleToggleGroupActive = async (event, group) => {
