@@ -22,60 +22,114 @@ export default function ExpensesPage() {
   const [loadingError, setLoadingError] = useState(null);
   const [filter, setFilter] = useState("outstanding");
 
-  // Load auth
+  // 1) Auth: check if user is signed in
   useEffect(() => {
     async function loadUser() {
-      const { data, error } = await supabase.auth.getUser();
-      if (error || !data?.user) {
-        setLoadingError("You must sign in to view expenses.");
-        return;
+      setLoading(true);
+      setLoadingError(null);
+
+      try {
+        const { data, error } = await supabase.auth.getUser();
+
+        // Not signed in or auth error → behave like Groups page
+        if (error || !data?.user) {
+          console.warn("No signed-in user for Expenses page:", error);
+          setProfileId(null);
+          setLoading(false);
+          setLoadingError("You must sign in to view the Expenses page.");
+          return;
+        }
+
+        // We have a user → save the id, the expenses effect will run next
+        setProfileId(data.user.id);
+      } catch (err) {
+        console.error("Error loading auth user:", err);
+        setProfileId(null);
+        setLoading(false);
+        setLoadingError("You must sign in to view the Expenses page.");
       }
-      setProfileId(data.user.id);
     }
+
     loadUser();
   }, []);
 
-  // Load expenses
+  // 2) Load expenses only if we have a profileId
   useEffect(() => {
-    if (!profileId) return;
+    if (!profileId) {
+      // If there is no profileId because user isn't signed in,
+      // we already set loadingError in the auth effect.
+      return;
+    }
 
     async function fetchExpenses() {
       setLoading(true);
+      setLoadingError(null);
 
-      const { data: assignments } = await supabase
-        .from("assigned_expenses")
-        .select("expense_id, amount, fulfilled")
-        .eq("user_id", profileId);
-
-      const assignedIds = assignments.map((a) => a.expense_id);
-
-      const { data: expenseRows } = await supabase
-        .from("expenses")
-        .select("*, groups(name)")
-        .or(
-          `payer_id.eq.${profileId}${
-            assignedIds.length ? `,id.in.(${assignedIds.join(",")})` : ""
-          }`
-        )
-        .order("occurred_at", { ascending: false });
-
-      // attach split data
-      const final = [];
-      for (const e of expenseRows) {
-        const { data: split } = await supabase
+      try {
+        const {
+          data: assignments,
+          error: assignmentsError,
+        } = await supabase
           .from("assigned_expenses")
-          .select("id, user_id, amount, fulfilled, profiles(full_name)")
-          .eq("expense_id", e.id);
+          .select("expense_id, amount, fulfilled")
+          .eq("user_id", profileId);
 
-        final.push({
-          ...e,
-          split,
-          myAssignment: assignments.find((a) => a.expense_id === e.id),
-        });
+        if (assignmentsError) {
+          throw assignmentsError;
+        }
+
+        const safeAssignments = assignments || [];
+        const assignedIds = safeAssignments.map((a) => a.expense_id);
+
+        const {
+          data: expenseRows,
+          error: expensesError,
+        } = await supabase
+          .from("expenses")
+          .select("*, groups(name)")
+          .or(
+            `payer_id.eq.${profileId}${
+              assignedIds.length ? `,id.in.(${assignedIds.join(",")})` : ""
+            }`
+          )
+          .order("occurred_at", { ascending: false });
+
+        if (expensesError) {
+          throw expensesError;
+        }
+
+        const safeExpenses = expenseRows || [];
+
+        const final = [];
+        for (const e of safeExpenses) {
+          const {
+            data: split,
+            error: splitError,
+          } = await supabase
+            .from("assigned_expenses")
+            .select("id, user_id, amount, fulfilled, profiles(full_name)")
+            .eq("expense_id", e.id);
+
+          if (splitError) {
+            throw splitError;
+          }
+
+          final.push({
+            ...e,
+            split: split || [],
+            myAssignment: safeAssignments.find(
+              (a) => a.expense_id === e.id
+            ),
+          });
+        }
+
+        setExpenses(final);
+      } catch (err) {
+        console.error("Error loading expenses:", err);
+        setLoadingError("Failed to load expenses.");
+      } finally {
+        setLoading(false);
       }
-
-      setExpenses(final);
-      setLoading(false);
     }
 
     fetchExpenses();
@@ -83,45 +137,66 @@ export default function ExpensesPage() {
 
   // Toggle paid for your own assignment
   async function togglePaid(assignment) {
-    await supabase
-      .from("assigned_expenses")
-      .update({ fulfilled: !assignment.fulfilled })
-      .eq("id", assignment.id);
+    try {
+      await supabase
+        .from("assigned_expenses")
+        .update({ fulfilled: !assignment.fulfilled })
+        .eq("id", assignment.id);
 
-    // reload
-    const updated = expenses.map((e) =>
-      e.id === assignment.expense_id
-        ? {
-            ...e,
-            split: e.split.map((s) =>
-              s.id === assignment.id
-                ? { ...s, fulfilled: !s.fulfilled }
-                : s
-            ),
-            myAssignment: {
-              ...e.myAssignment,
-              fulfilled: !e.myAssignment.fulfilled,
-            },
-          }
-        : e
-    );
+      // update local state so we don't have to refetch everything
+      const updated = expenses.map((e) =>
+        e.id === assignment.expense_id
+          ? {
+              ...e,
+              split: e.split.map((s) =>
+                s.id === assignment.id
+                  ? { ...s, fulfilled: !s.fulfilled }
+                  : s
+              ),
+              myAssignment: {
+                ...e.myAssignment,
+                fulfilled: !e.myAssignment.fulfilled,
+              },
+            }
+          : e
+      );
 
-    setExpenses(updated);
+      setExpenses(updated);
+    } catch (err) {
+      console.error("Error toggling paid:", err);
+    }
   }
 
-  if (loading)
+  // === RENDERING ===
+
+  // While auth/expenses are loading → spinner only
+  if (loading) {
     return (
       <Box className={styles.loadingBox}>
         <CircularProgress />
       </Box>
     );
+  }
 
-  if (loadingError)
+  // Not signed in OR load error → show message only (like Groups page)
+  if (loadingError) {
     return (
-      <Box className={styles.container}>
-        <Typography color="error">{loadingError}</Typography>
+      <Box
+        sx={{
+          minHeight: "60vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          px: 2,
+        }}
+      >
+        <Typography variant="h6" sx={{ color: "var(--color-primary)" }}>
+          {loadingError}
+        </Typography>
       </Box>
     );
+  }
 
   // Filter logic
   const filteredExpenses = expenses.filter((e) =>
@@ -192,7 +267,12 @@ export default function ExpensesPage() {
 
               <Typography className={styles.labelText}>
                 Your Share:{" "}
-                <strong>${exp.myAssignment?.amount.toFixed(2)}</strong>
+                <strong>
+                  $
+                  {exp.myAssignment
+                    ? exp.myAssignment.amount.toFixed(2)
+                    : "0.00"}
+                </strong>
               </Typography>
 
               {exp.note && (
@@ -205,7 +285,9 @@ export default function ExpensesPage() {
               )}
 
               <Typography sx={{ mt: 1 }} className={styles.labelText}>
-                {new Date(exp.occurred_at).toLocaleDateString()}
+                {exp.occurred_at
+                  ? new Date(exp.occurred_at).toLocaleDateString()
+                  : ""}
               </Typography>
 
               {/* SPLIT BOX */}
