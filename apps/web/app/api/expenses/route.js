@@ -2,14 +2,10 @@ import { NextResponse } from "next/server";
 import { createSSRClientFromRequest } from "@/lib/supabaseSSR";
 import { supabaseServer } from "@/lib/supabaseServer";
 
-/* ----------------------------------------------------
-   GET — Fetch expenses for a group OR for a user
----------------------------------------------------- */
 export async function GET(request) {
   try {
     const { supabase, response } = createSSRClientFromRequest(request);
 
-    // AUTH
     const { data: userData, error: userErr } = await supabase.auth.getUser();
     if (userErr || !userData?.user) {
       return NextResponse.json(
@@ -18,9 +14,9 @@ export async function GET(request) {
       );
     }
 
-    const searchParams = request.nextUrl.searchParams;
-    const groupId = searchParams.get("groupId");
-    const userId = searchParams.get("userId");
+    const params = request.nextUrl.searchParams;
+    const groupId = params.get("groupId");
+    const userId = params.get("userId");
 
     if (!groupId && !userId) {
       return NextResponse.json(
@@ -29,9 +25,6 @@ export async function GET(request) {
       );
     }
 
-    /* --------------------------------------------
-       GROUP VIEW — return all expenses in a group
-    -------------------------------------------- */
     if (groupId) {
       const { data: expenses, error: eErr } = await supabaseServer
         .from("expenses")
@@ -56,43 +49,29 @@ export async function GET(request) {
 
       if (eErr) throw eErr;
 
-      // Compute "fulfilled" if ALL assigned_expenses are fulfilled
-      const computed = (expenses || []).map((exp) => {
-        const allFulfilled =
-          exp.assigned?.length > 0 &&
-          exp.assigned.every((a) => a.fulfilled === true);
+      const mapped =
+        expenses?.map((exp) => {
+          const allFulfilled =
+            exp.assigned?.length > 0 &&
+            exp.assigned.every((a) => a.fulfilled === true);
 
-        return {
-          ...exp,
-          fulfilled: allFulfilled,
-        };
-      });
+          return { ...exp, fulfilled: allFulfilled };
+        }) ?? [];
 
-      return NextResponse.json(computed, {
+      return NextResponse.json(mapped, {
         status: 200,
         headers: response.headers,
       });
     }
 
-    /* --------------------------------------------
-       USER VIEW — expenses where this user is assigned
-    -------------------------------------------- */
     const { data: assignments, error: aErr } = await supabaseServer
       .from("assigned_expenses")
-      .select(
-        `
-        id,
-        expense_id,
-        user_id,
-        amount,
-        fulfilled
-      `
-      )
+      .select("id, expense_id, user_id, amount, fulfilled")
       .eq("user_id", userId);
 
     if (aErr) throw aErr;
 
-    if (!assignments || assignments.length === 0) {
+    if (!assignments?.length) {
       return NextResponse.json([], {
         status: 200,
         headers: response.headers,
@@ -103,33 +82,21 @@ export async function GET(request) {
 
     const { data: expensesData, error: e2Err } = await supabaseServer
       .from("expenses")
-      .select(
-        `
-        id,
-        group_id,
-        title,
-        amount,
-        note,
-        occurred_at
-      `
-      )
+      .select("id, group_id, title, amount, note, occurred_at")
       .in("id", expenseIds);
 
     if (e2Err) throw e2Err;
 
-    // Attach user's own assignments
-    const assignmentsByExpense = new Map();
-    for (const a of assignments) {
-      if (!assignmentsByExpense.has(a.expense_id)) {
-        assignmentsByExpense.set(a.expense_id, []);
-      }
-      assignmentsByExpense.get(a.expense_id).push(a);
-    }
+    const byExpense = new Map();
+    assignments.forEach((a) => {
+      if (!byExpense.has(a.expense_id)) byExpense.set(a.expense_id, []);
+      byExpense.get(a.expense_id).push(a);
+    });
 
     const result =
       expensesData?.map((exp) => ({
         ...exp,
-        assigned: assignmentsByExpense.get(exp.id) ?? [],
+        assigned: byExpense.get(exp.id) || [],
       })) ?? [];
 
     return NextResponse.json(result, {
@@ -137,46 +104,35 @@ export async function GET(request) {
       headers: response.headers,
     });
   } catch (err) {
-    console.error("GET /api/expenses error:", err);
     return NextResponse.json(
-      { error: err.message ?? "Server error" },
+      { error: err.message || "Server error" },
       { status: 500 }
     );
   }
 }
 
-/* ----------------------------------------------------
-   POST — Create new expense
----------------------------------------------------- */
 export async function POST(request) {
   try {
     const body = await request.json();
     const { title, amount, group_id, payer_id, note, assigned } = body;
 
     if (!title || !amount || !group_id || !payer_id) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     if (!Array.isArray(assigned) || assigned.length === 0) {
-      return NextResponse.json(
-        { error: "assigned must be a non-empty array" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "assigned must be non-empty" }, { status: 400 });
     }
 
-    // 1. Create expense
-    const { data: expenseRows, error: expErr } = await supabaseServer
+    const { data: rows, error: expErr } = await supabaseServer
       .from("expenses")
       .insert([
         {
           title,
           amount,
-          note: note || null,
           group_id,
           payer_id,
+          note: note || null,
           occurred_at: new Date(),
         },
       ])
@@ -184,11 +140,9 @@ export async function POST(request) {
       .limit(1);
 
     if (expErr) throw expErr;
+    const expense = rows[0];
 
-    const expense = expenseRows[0];
-
-    // 2. Insert assigned splits coming from the client
-    const rows = assigned.map((a) => ({
+    const inserts = assigned.map((a) => ({
       expense_id: expense.id,
       user_id: a.user_id,
       amount: Number(a.amount),
@@ -197,36 +151,28 @@ export async function POST(request) {
 
     const { error: assignErr } = await supabaseServer
       .from("assigned_expenses")
-      .insert(rows);
+      .insert(inserts);
 
     if (assignErr) throw assignErr;
 
     return NextResponse.json(expense, { status: 201 });
   } catch (err) {
-    console.error("POST /api/expenses error:", err);
     return NextResponse.json(
-      { error: err.message ?? "Server error" },
+      { error: err.message || "Server error" },
       { status: 500 }
     );
   }
 }
 
-/* ----------------------------------------------------
-   PUT — Update existing expense
----------------------------------------------------- */
 export async function PUT(request) {
   try {
     const body = await request.json();
     const { id, title, amount, note, assigned } = body;
 
     if (!id) {
-      return NextResponse.json(
-        { error: "Missing expense id" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing expense id" }, { status: 400 });
     }
 
-    // Update expense
     const { error: updateErr } = await supabaseServer
       .from("expenses")
       .update({
@@ -238,10 +184,9 @@ export async function PUT(request) {
 
     if (updateErr) throw updateErr;
 
-    // Replace assignments
     await supabaseServer.from("assigned_expenses").delete().eq("expense_id", id);
 
-    const rows = assigned.map((a) => ({
+    const inserts = assigned.map((a) => ({
       expense_id: id,
       user_id: a.user_id,
       amount: a.amount,
@@ -250,49 +195,39 @@ export async function PUT(request) {
 
     const { error: aeErr } = await supabaseServer
       .from("assigned_expenses")
-      .insert(rows);
+      .insert(inserts);
 
     if (aeErr) throw aeErr;
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
-    console.error("PUT /api/expenses error:", err);
     return NextResponse.json(
-      { error: err.message ?? "Server error" },
+      { error: err.message || "Server error" },
       { status: 500 }
     );
   }
 }
 
-/* ----------------------------------------------------
-   DELETE — Delete expense
----------------------------------------------------- */
 export async function DELETE(request) {
   try {
     const body = await request.json();
     const { id } = body;
 
     if (!id) {
-      return NextResponse.json(
-        { error: "Missing id" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing id" }, { status: 400 });
     }
 
-    // Delete assignments
     await supabaseServer
       .from("assigned_expenses")
       .delete()
       .eq("expense_id", id);
 
-    // Delete expense
     await supabaseServer.from("expenses").delete().eq("id", id);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
-    console.error("DELETE /api/expenses error:", err);
     return NextResponse.json(
-      { error: err.message ?? "Server error" },
+      { error: err.message || "Server error" },
       { status: 500 }
     );
   }
